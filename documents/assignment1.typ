@@ -48,3 +48,26 @@ The discrete behavior previously stated now translates to the partially continuo
    ),
 $
 i.e. the demands should normally be identically to the rates of the bicycles taken in or out, only if the station is either full or empty, the demands may be higher, but not lower, than the input or output bicycles.
+
+== Aspects of the Machine Learning Approach
+- Controllable Parameters: 
+  These include the sharpness of the hourly rate approximation, which depends on the window. Choosing a large window to compute the rates leads to loss of precision in the time domain, while too small window might not capture the continuity of the demand well.
+  Other control parameters of the historic data collection include the accuracy of time resolution which in the given dataset is minutes.
+- Signals (i.e. input features):
+  To predict the future hourly demand, we input 
+    - the historic input and output rates before the prediction time
+    - the daytime
+    - the day of the week.
+- Error States (i.e. failure modes of the model):
+  - Possible failure modes include cases if the future prediction are not accurate enough to be useful, the predictions become unstable or the in-demand does not match the out demand.
+- Noise Factors:
+  - Capacity changes of the stations during the month, which appears due to e.g. repositioning of stationing.These changes are not included in the published data.
+  - Population density changes, irregular road and facility closures which are not present in the training data but have a significant influence on bicycle sharing behavior.
+
+=== Possible Additional Modeling Approaches
+In order to leverage the spatial relational structure of the bicycle stations for e.g. a Graph Neural Network approach, we introduce the weighted bicycle stations graph. This is a weighted undirected graph $(V, E, w)$, with vertices $V = {s | s " is a bicycle station"}$.
+To define a suitable connectivity structure, we draw an edge between two stations if a sufficient number of rides take place between the nodes, i.e. $
+{s_1,s_2} ∈ E :⇔ abs({"ride between" s_1, s_2}) > N_min
+$
+ with $N_(min)$ suitably chosen depending on the data such that the graph is sufficiently sparse.
+Finally, we define the weights to be the number of rides between two stations, i.e. $w(s_1, s_2) := abs({"ride between" s_1, s_2})$
