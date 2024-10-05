@@ -1,11 +1,22 @@
-= Problem Definition and Characterization
+== Problem Definition and Characterization
+
 Problem: "Bicycle Share Demand Prediction"
 
-Stations where bicycles are docked and taken from are a common way of implementing a bicycle sharing system. However, the demand varies greatly between location, weekday and other factors, which leads to imbalances and congestions in the system. This causes customer dissatisfaction and unreliability of the system, jeopardizing the central role of bicycle in reaching emission neutral transportation. To properly implement dynamic solutions such as adaptive dynamic pricing, the demand needs to be reliably predicted.
+Stations where bicycles are docked and taken from are a common way of implementing a bicycle sharing system. As bicycle sharing becomes one of the most popular ways to commute, it plays a significant role in the public transportation system. However, the demand varies greatly between location, weekday and other factors, which leads to imbalances and congestions in the system. This results in customer dissatisfaction and unreliability of the system, jeopardizing the central role of bicycle in reaching emission-neutral transportation and providing convenience. 
+
+To properly implement dynamic solutions, such as adaptive dynamic pricing and terminal extensions, the demand needs to be reliably predicted. Since the demand fluctuates based on various aspects, we decided to train a machine learning model to investigate the relations between these aspects and the demand. With a sufficiently accurate model, bicycle sharing companies can adopt adjustments to provide more reliably service.
+
+#figure(
+  image("bikeapp.jpg", fit: "cover", height:25% ,width: 60%),
+  caption: [
+    A screenshot of Bike Share Toronto app showing empty terminals
+  ],
+)
 
 #let OutDem = math.op("OutDem")
 #let InDem = math.op("InDem")
 #let Cap = math.op("Cap")
+
 
 == Problem Characterization
 Our goal is to predict the demand of bicycle sharing using a machine learning approach given historical data and additional features, such as the day of the week and the daytime. 
@@ -37,26 +48,3 @@ The discrete behavior previously stated now translates to the partially continuo
    ),
 $
 i.e. the demands should normally be identically to the rates of the bicycles taken in or out, only if the station is either full or empty, the demands may be higher, but not lower, than the input or output bicycles.
-
-== Aspects of the Machine Learning Approach
-- Controllable Parameters: 
-  These include the sharpness of the hourly rate approximation, which depends on the window. Choosing a large window to compute the rates leads to loss of precision in the time domain, while too small window might not capture the continuity of the demand well.
-  Other control parameters of the historic data collection include the accuracy of time resolution which in the given dataset is minutes.
-- Signals (i.e. input features):
-  To predict the future hourly demand, we input 
-    - the historic input and output rates before the prediction time
-    - the daytime
-    - the day of the week.
-- Error States (i.e. failure modes of the model):
-  - Possible failure modes include cases if the future prediction are not accurate enough to be useful, the predictions become unstable or the in-demand does not match the out demand.
-- Noise Factors:
-  - Capacity changes of the stations during the month, which appears due to e.g. repositioning of stationing.These changes are not included in the published data.
-  - Population density changes, irregular road and facility closures which are not present in the training data but have a significant influence on bicycle sharing behavior.
-
-=== Possible Additional Modeling Approaches
-In order to leverage the spatial relational structure of the bicycle stations for e.g. a Graph Neural Network approach, we introduce the weighted bicycle stations graph. This is a weighted undirected graph $(V, E, w)$, with vertices $V = {s | s " is a bicycle station"}$.
-To define a suitable connectivity structure, we draw an edge between two stations if a sufficient number of rides take place between the nodes, i.e. $
-{s_1,s_2} ∈ E :⇔ abs({"ride between" s_1, s_2}) > N_min
-$
- with $N_(min)$ suitably chosen depending on the data such that the graph is sufficiently sparse.
-Finally, we define the weights to be the number of rides between two stations, i.e. $w(s_1, s_2) := abs({"ride between" s_1, s_2})$
