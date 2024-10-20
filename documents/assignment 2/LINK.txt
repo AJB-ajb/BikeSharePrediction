@@ -1,8 +1,8 @@
-A review on bike-sharing: The factors affecting bike-sharing demand: 
-https://www.sciencedirect.com/science/article/abs/pii/S2210670719312387
+Bike-Sharing Demand Prediction at Community Level under COVID-19 Using Deep Learning:
+https://www.mdpi.com/1424-8220/22/3/1060
 
-Modeling bike-sharing demand using a regression model with spatially varying coefficients:
-https://www.sciencedirect.com/science/article/pii/S0966692321001125?ref=pdf_download&fr=RR-2&rr=8d56c29f6c6339ff
+Using graph structural information about flows to enhance short-term demand prediction in bike-sharing systems:
+https://www.sciencedirect.com/science/article/pii/S0198971520302544
 
 Data Analysis and Optimization for (Citi)Bike Sharing:
 https://ojs.aaai.org/index.php/AAAI/article/view/9245
