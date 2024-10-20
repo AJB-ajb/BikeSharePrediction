@@ -7,19 +7,19 @@ By Alexander Busch and Kaifeng Lu as part of the course project of ECE1724H: Bio
 = Literature Review
 == Depth and Breadth of Survey
 
-1. A review on bike-sharing: The factors affecting bike-sharing demand [1] @EREN2020101882:
+1. A review on bike-sharing: The factors affecting bike-sharing demand @EREN2020101882:
 
-2. Data Analysis and Optimization for (Citi)Bike Sharing [2] @OMahony_Shmoys_2015:
+2. Data Analysis and Optimization for (Citi)Bike Sharing @OMahony_Shmoys_2015:
 
-3. Modeling bike-sharing demand using a regression model with spatially varying coefficients [3] @8005700:
+3. Modeling bike-sharing demand using a regression model with spatially varying coefficients @8005700:
 
-4. Modeling Bike Availability in a Bike-Sharing System Using Machine Learning [4] @WANG2021103059:
+4. Modeling Bike Availability in a Bike-Sharing System Using Machine Learning @WANG2021103059:
 
 
 = Taxonomic Classification
 
-= References
 
+= References
 #bibliography("references.bib", style: "institute-of-electrical-and-electronics-engineers")
 
 // [1] E. Eren and V. Emre Uz, “A review on bike-sharing: The factors affecting bike-sharing demand,” 2020. Accessed: Oct. 20, 2024. [Online]. Available: https://www.sciencedirect.com/science/article/pii/S2210670719312387
