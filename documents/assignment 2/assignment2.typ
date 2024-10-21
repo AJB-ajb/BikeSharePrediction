@@ -44,9 +44,11 @@ By Alexander Busch and Kaifeng Lu as part of the course project of ECE1724H: Bio
   
    This article focuses on investigating how various factors such as land use, socio-demographic attributes, and transportation infrastructure influence bike-sharing demand at different stations. The authors propose a spatially varying coefficients (SVC) regression model that accounts for local spatial effects, unlike traditional models that assume the factors are spatially homogeneous. As a result, the SVC model achieves a average RMSE of 0.89 and $R^2$ of 0.557.
 
-   Pros: Captures spatial variability, improving prediction accuracy significantly.
+   Pros: 
+ \   SVC: Captures spatial variability, improving prediction accuracy significantly.
    
-   Cons: Requires more computational effort and complexity compared to simpler regression models.
+   Cons: 
+ \   SVC: Requires more computational effort and complexity compared to simpler regression models.
    
 4. Modeling Bike Availability in a Bike-Sharing System Using Machine Learning @WANG2021103059:
 
