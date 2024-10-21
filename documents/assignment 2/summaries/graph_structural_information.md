@@ -9,7 +9,6 @@ Deep learning approaches were found to better learn time-lagged graph variables,
 
 ## Data Used
 New York Citi Bike (2016-17 ; 785 Stations)
-
 Chicago Divvy Bike (2016 - 2017, 569 stations)
 
 
