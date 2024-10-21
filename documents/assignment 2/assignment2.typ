@@ -25,10 +25,45 @@ By Alexander Busch and Kaifeng Lu as part of the course project of ECE1724H: Bio
 
 2. Using graph structural information about flows to enhance short-term demand prediction in bike-sharing systems:
 
-3. Modeling bike-sharing demand using a regression model with spatially varying coefficients @8005700:
+   This paper investigates how graph theory can enhance short-term bike-sharing demand forecasting. It focuses on incorporating graph-based features derived from flow interactions such as Out-strength, In-strength, Out-degree, In-degree, and PageRank to improve prediction accuracy. It compares three machine learning models: XGBoost, Multi-Layer Perceptron (MLP), and LSTM. This study found that including graph-based features significantly improves model performance compared to using traditional features like meteorological data alone.
 
+   To conclude the performance of each model, this paper finds that the XGBoost, MLP and LSTM model achieves MAPE values of 27.2%, 27.7%, and 27.0% as well as RMSE values of 6.78, 6.85, and 6.69 correspondingly. The LSTM model turns out to be the most effective model when incorporating complex graph-based features.
+
+   Pros:
+ \   XGBoost: Excellent for handling structured data and provides strong performance with less tuning.
+ \   MLP: Simple and efficient with moderate performance.
+ \   LSTM: Best at capturing temporal dependencies and sequential patterns, especially with time-lagged data.
+
+   Cons:
+ \   XGBoost: Less effective at handling complex time dependencies compared to LSTM.
+ \   MLP: Struggles with sequential data and lacks the advanced handling of time dependencies.
+ \   LSTM: Complex to train and requires more computational resources.
+
+ 
+3. Modeling bike-sharing demand using a regression model with spatially varying coefficients @8005700:
+  
+   This article focuses on investigating how various factors such as land use, socio-demographic attributes, and transportation infrastructure influence bike-sharing demand at different stations. The authors propose a spatially varying coefficients (SVC) regression model that accounts for local spatial effects, unlike traditional models that assume the factors are spatially homogeneous. As a result, the SVC model achieves a average RMSE of 0.89 and $R^2$ of 0.557.
+
+   Pros: Captures spatial variability, improving prediction accuracy significantly.
+   
+   Cons: Requires more computational effort and complexity compared to simpler regression models.
+   
 4. Modeling Bike Availability in a Bike-Sharing System Using Machine Learning @WANG2021103059:
 
+   This paper explores predicting bike availability at San Francisco Bay Area Bike Share stations using machine learning algorithms. The authors apply three methods: Random Forest (RF) and Least-Squares Boosting (LSBoost) for univariate regression and Partial Least-Squares Regression (PLSR) for multivariate regression. They found that factors like station neighbors, time of prediction, and weather conditions are significant in predicting bike availability.
+
+   The RF, LSBoost and PLSR models achieve a MAE of 0.37, 0.58 and 0.6 bikes/station correspondingly. The Random Forest (RF) model offers the best prediction accuracy.
+
+   Pros:
+ \   RF: 
+ \   LSBoost: 
+ \   PLSR: 
+
+   Cons:
+ \   RF: 
+ \   LSBoost: 
+ \   PLSR:
+   
 
 == Taxonomic Classification
 
