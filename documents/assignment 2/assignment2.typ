@@ -7,24 +7,38 @@ By Alexander Busch and Kaifeng Lu as part of the course project of ECE1724H: Bio
 = Literature Review
 == Depth and Breadth of Survey
 
-1. A review on bike-sharing: The factors affecting bike-sharing demand [1] @EREN2020101882:
+1. Bike-Sharing Demand Prediction at Community Level under COVID-19 Using Deep Learning:
 
-2. Data Analysis and Optimization for (Citi)Bike Sharing [2] @OMahony_Shmoys_2015:
+   This article focuses on short-term bike-sharing demand forecasting in Montreal. It uses deep learning techniques to predict bike pickups 15 minutes ahead in six communities identified within the city's bike-sharing network. The study compares the performance of multiple machine learning models: LSTM, CNN-LSTM hybrids, and ARIMA. Researchers trained the models based on two main feature attributes: historical demand data in 15-minute intervals and weather conditions. 
+   
+   As a result, the CNN-LSTM hybrid model yields the best performance, achieving the lowest error (MAE of 3.00 and RMSE of 4.77). The LSTM model achieves an MAE of 4.48 and RMSE of 6.86, while the ARIMA model achieves an MAE of 50.95 and RMSE of 61.17.
+   
+    Pros:
+ \   LSTM Models: Captures temporal dependencies effectively with moderate complexity.
+ \   CNN-LSTM Hybrid Models: Combines spatial and temporal learning for superior accuracy in complex data.
+ \   ARIMA Model: Simple, fast to train, and easy to interpret.
+ 
+    Cons: 
+ \   LSTM Models: Lacks spatial awareness, limiting prediction accuracy compared to hybrid models.
+ \   CNN-LSTM Hybrid Models: Computationally expensive and harder to interpret.
+ \   ARIMA Model: Performs poorly with complex, nonlinear, or disrupted data.
 
-3. Modeling bike-sharing demand using a regression model with spatially varying coefficients [3] @8005700:
+2. Using graph structural information about flows to enhance short-term demand prediction in bike-sharing systems:
 
-4. Modeling Bike Availability in a Bike-Sharing System Using Machine Learning [4] @WANG2021103059:
+3. Modeling bike-sharing demand using a regression model with spatially varying coefficients @8005700:
+
+4. Modeling Bike Availability in a Bike-Sharing System Using Machine Learning @WANG2021103059:
 
 
-= Taxonomic Classification
+== Taxonomic Classification
 
 = References
 
 #bibliography("references.bib", style: "institute-of-electrical-and-electronics-engineers")
 
-// [1] E. Eren and V. Emre Uz, “A review on bike-sharing: The factors affecting bike-sharing demand,” 2020. Accessed: Oct. 20, 2024. [Online]. Available: https://www.sciencedirect.com/science/article/pii/S2210670719312387
+// [1] https://www.mdpi.com/1424-8220/22/3/1060
 
-// [2] E. O’Mahony, “Data Analysis and Optimization for (Citi)Bike Sharing,” 2015. Accessed: Oct. 20, 2024. [Online]. Available: https://ojs.aaai.org/index.php/AAAI/article/view/9245
+// [2] https://www.sciencedirect.com/science/article/pii/S0198971520302544
 
 // [3] X. Wang, Z. Cheng, M. Trépanier, and L. Sun, “Modeling bike-sharing demand using a regression model with spatially varying coefficients,” 2021. Accessed: Oct. 20, 2024. [Online]. Available: https://www.sciencedirect.com/science/article/pii/S0966692321001125?ref=pdf_download&fr=RR-2&rr=8d56c29f6c6339ff
 
