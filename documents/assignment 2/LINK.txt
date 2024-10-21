@@ -9,3 +9,9 @@ https://ojs.aaai.org/index.php/AAAI/article/view/9245
 
 Modeling Bike Availability in a Bike-Sharing System Using Machine Learning:
 https://ieeexplore.ieee.org/abstract/document/8005700
+
+
+Optional:
+
+Prediction using DA GNNs
+https://ieeexplore.ieee.org/abstract/document/10287193

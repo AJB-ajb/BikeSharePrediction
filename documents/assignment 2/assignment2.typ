@@ -16,7 +16,22 @@ By Alexander Busch and Kaifeng Lu as part of the course project of ECE1724H: Bio
 4. Modeling Bike Availability in a Bike-Sharing System Using Machine Learning @WANG2021103059:
 
 
-= Taxonomic Classification
+= Taxonomic Table and Tabular Comparison
+For the development of accurately prediction approaches the most important factors are:
+- The data used:
+  Essential is the features incorporated and the size, diversity and quality of the dataset.
+  Because all compared approaches use recorded data from bike-sharing systems, the quality of the data is uniformly high, however, the size varies. 
+  We propose to classify features:
+
+- The architecture of the model:
+  In order to achieve intelligent prediction, usually deeper models perform significantly better. Special modules of neural network architecture, such as Memory Components (RNNs, LSTMs, GRUs), Convolutions (CNN, GNN) or attention components strongly influence what the model is able to learn. 
+  // We suggest to classify all neural network approaches in our table based on 
+  // Spatial Architecture: CNN / GNN / None
+  // Temporal Architecture LSTM / GRU / RNN / None
+  // 
+
+
+#table(columns: 5, table.header([Approach], [Spatial Features Incorporated], [Spatial Architecture], [Temporal Features], [Temporal Architecture])) // todo
 
 
 = References
