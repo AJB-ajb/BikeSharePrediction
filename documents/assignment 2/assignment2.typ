@@ -55,14 +55,14 @@ By Alexander Busch and Kaifeng Lu as part of the course project of ECE1724H: Bio
    The RF, LSBoost and PLSR models achieve a MAE of 0.37, 0.58 and 0.6 bikes/station correspondingly. The Random Forest (RF) model offers the best prediction accuracy.
 
    Pros:
- \   RF: 
- \   LSBoost: 
- \   PLSR: 
+ \   RF: Highly accurate with low prediction error and robust to overfitting.
+ \   LSBoost: Effective for regression tasks with manageable computational complexity.
+ \   PLSR: Captures spatial correlations, useful for large networks with interdependent stations.
 
    Cons:
- \   RF: 
- \   LSBoost: 
- \   PLSR:
+ \   RF: Requires independent observations. Performance decreases as prediction horizon increases.
+ \   LSBoost: Higher prediction error. Requires proper regularization against overfitting.
+ \   PLSR: Yields the highest prediction error. Less accurate for smaller networks.
    
 
 == Taxonomic Classification
