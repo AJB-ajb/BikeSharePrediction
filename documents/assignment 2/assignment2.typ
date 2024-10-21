@@ -19,40 +19,33 @@ Based on the literature, we compare the following recent machine learning approa
 // give some directions for future research
 
 = Taxonomic Table and Tabular Comparison
-We divide the given approaches according to the used models.
-
+We organize the used models into a tree based on the dominant design features.
 
 #import "@preview/syntree:0.2.0": syntree, tree
-#syntree(
-  nonterminal: (font: "Linux Biolinum"),
-  // terminal: (fill: blue),
-  child-spacing: 3em, // default 1em
-  layer-spacing: 2em, // default 2.3em
-  "[Approach [Optimization [Integer Least Squares Programming ]] 
-            [VP [V is] [^NP a wug]]]"
-)
-#tree([ML],
+
+#figure(tree([ML],
   tree([Classical ML],
     tree([Regression], 
-      [Partial Least Suqares @Ashqar2017], [ARIMA @Dastjerdi2022], []),
+      [P-LSQ @Ashqar2017], [ARIMA @Dastjerdi2022]),
     tree([Tree-Based], 
-      [LSBoost @Ashqar2017], [XGBoost @YANG2020101521], [Random Forests @Ashqar2017])),
+      [LSBoost @Ashqar2017], [XGBoost @YANG2020101521], [RF @Ashqar2017])),
   tree([Neural Network Approaches],
     [MLP @YANG2020101521],
     tree([LSTM-based],
       [LSTM-CNN @Dastjerdi2022],
       tree([Graph-based],
         [LSTM @YANG2020101521],
-        [MR-GNN @Liang2024]
+        [DA-MR-GNN @Liang2024]
       ))
   )
-)
+), caption: [An overview of the employed ML approaches])
 
 
+== Directions for Future Research
+As noted in @YANG2020101521, there is no single standard benchmarking dataset for the specific objective of bike sharing demand prediction, making it difficult to obtain a precise ranking of the models. Notably, the New York Citibike data has been used in multiple approaches @YANG2020101521, @Liang2024, but the precise data used still changes.
+As given in @YANG2020101521, several studies have suggested that XGBoost performing as well most of the state of the art approaches, having also won the 2014 Kaggle competition @cukierski2014bike_kaggle, however the best approach was found to depend strongly on the dataset and modeling. 
 
-
-
-
+Notably @YANG2020101521 suggests, that well-performing deep model architectures in traffic prediction are likely to show good performance in bike-sharing demand prediction. In this line of work, @Liang2024 combines well performing spatio-temporal GNN approach, known from traffic prediction @Yu2017SpatiotemporalGC and @Zhang2022AGT, with a domain-adversarial network. However, little work has been done on the extent that performance of traffic prediction carries over to bike-sharing performance and adaptation of successful models from other adjacent fields, (e.g. models in @Yu2017SpatiotemporalGC, @Zhang2022AGT), appears to be a promising research direction.
 
 
 For the development of accurately prediction approaches the most important factors are:
@@ -74,13 +67,4 @@ For the development of accurately prediction approaches the most important facto
 
 = References
 #bibliography("references.bib", style: "institute-of-electrical-and-electronics-engineers")
-
-// [1] E. Eren and V. Emre Uz, “A review on bike-sharing: The factors affecting bike-sharing demand,” 2020. Accessed: Oct. 20, 2024. [Online]. Available: https://www.sciencedirect.com/science/article/pii/S2210670719312387
-
-// [2] E. O’Mahony, “Data Analysis and Optimization for (Citi)Bike Sharing,” 2015. Accessed: Oct. 20, 2024. [Online]. Available: https://ojs.aaai.org/index.php/AAAI/article/view/9245
-
-// [3] X. Wang, Z. Cheng, M. Trépanier, and L. Sun, “Modeling bike-sharing demand using a regression model with spatially varying coefficients,” 2021. Accessed: Oct. 20, 2024. [Online]. Available: https://www.sciencedirect.com/science/article/pii/S0966692321001125?ref=pdf_download&fr=RR-2&rr=8d56c29f6c6339ff
-
-// [4] H. I. Ashqar, M. Elhenawy, M. H. Almannaa, A. Ghanem, H. A. Rakha, and L. House, “Modeling bike availability in a bike-sharing system using machine learning,” 2017. Accessed: Oct. 20, 2024. [Online]. Available: https://ieeexplore.ieee.org/abstract/document/8005700
-
 
