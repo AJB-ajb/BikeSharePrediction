@@ -31,7 +31,7 @@ For the development of accurately prediction approaches the most important facto
   // 
 
 
-#table(columns: 5, table.header([Approach], [Spatial Features Incorporated], [Spatial Architecture], [Temporal Features], [Temporal Architecture])) // todo
+#table(columns: 5, table.header([Approach], [Target Variable], [Spatial Features Incorporated], [Spatial Architecture], [Temporal Features], [Temporal Architecture], )) // todo
 
 
 = References
