@@ -11,5 +11,9 @@ NYC Citi bike trip records, NYC Subway passenger usage data, NYC Ride-Hailing tr
 The paper compares their MRGNN approach with several models.
 
 ## Discussion
-The claim made that integrating subway and ride-hailing information significantly improves ride-sharing usage
+Pros. The claim made that integrating subway and ride-hailing information significantly influences ride-sharing usage and thus improves prediction is intuitively consistent.
+
+Cons.
+However the integration of this multimodal data, with its own  severely complicates the model and 
+
 
