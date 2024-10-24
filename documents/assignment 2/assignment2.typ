@@ -15,12 +15,12 @@ Based on the literature, we compare the following machine learning approaches to
    
    They found that the CNN-LSTM hybrid model outperforms the other models (MAE of $3.00$ and RMSE of $4.77$), compared to the LSTM model (MAE of $4.48$ and RMSE of $6.86$), and the ARIMA (MAE of $50.95$ and RMSE of $61.17$).
    
-Pros:
+==== Pros:
  - LSTM Models: These were found to capture temporal dependencies effectively with moderate complexity.
  - CNN-LSTM Hybrid Models: These were found to combine spatial and temporal learning for improved accuracy in complex data.
  - The ARIMA Model is fast to train and easy to interpret.
  
-Cons: 
+==== Cons: 
  - LSTM Models: Lacks spatial awareness, limiting prediction accuracy compared to hybrid models.
  - CNN-LSTM Hybrid Models: These are computationally expensive and harder to interpret.
  - The ARIMA Model was found to perform poorly for complex, nonlinear and disrupted data.
@@ -30,12 +30,12 @@ This paper investigates how graph theory can enhance short-term bike-sharing dem
 
 The authors here find that the XGBoost, MLP and LSTM model achieve MAPE values of $27.2%$, $27.7%$, and $27.0%$ as well as RMSE values of $6.78, 6.85, and 6.69$ correspondingly. The LSTM model was here found to be the most effective model for incorporating complex graph-based features, while the overall performance of the XGBoost is nearly comparable.
 
-Pros of the given approaches:
+==== Pros:
  - XGBoost excels at handling structured data and provides good performance with less tuning.
  - The MLP architecture is simple and efficient with moderate performance.
  - The LSTM is best at capturing temporal dependencies and sequential patterns, especially with time-lagged data.
 
-Cons:
+==== Cons:
  - The XGBoost is less effective at handling complex time dependencies compared to the LSTM.
  - The MLP struggles with sequential data and lacks the advanced handling of time dependencies.
  - The LSTM is complex to train and requires significant computational resources.
@@ -44,12 +44,12 @@ Cons:
   
 This article focuses on investigating how various factors such as land use, socio-demographic attributes, and transportation infrastructure influence bike-sharing demand at different stations. Notably, they define a graph model, where the data for each bike-sharing cluster is accumulated according to its catchment region. The catchment region is calculated using Thiessen polygons, and ensured to be non-overlapping. The authors propose a spatially varying coefficients (SVC) regression model that accounts for local spatial effects, unlike previous regression models that assume the factors are spatially homogeneous. // As a result, the SVC model achieves a average RMSE of $0.89$ and $R^2$ of $0.557$.
 
-Pros: 
+==== Pros: 
 // - This approach captures spatial variability, improving prediction accuracy significantly.
 - The graph model includes connectivity between station clusters to be used.
 - The more sophisticated modeling of station clusters defined by catchment areas instead of single stations notably allows to predict demand in regions where no stations are present and thus allows planning.
    
-Cons: 
+==== Cons: 
 // - Requires more computational effort and complexity compared to simpler regression models.
 - As the model does not directly regress on immediate historical data as e.g. the LSTM models, it fundamentally does not to allow accurate future predictions, but instead better fits general analysis purposes.
    
@@ -59,12 +59,13 @@ This paper explores predicting bike availability at San Francisco Bay Area Bike 
 
 The RF, LSBoost and PLSR models achieve MAE of $0.37$, $0.58$ and $0.6$ bikes per station correspondingly, i.e. the Random Forest (RF) model here is found to give the best prediction accuracy.
 
-Pros:
+\
+==== Pros:
 - The RF model is highly accurate with low prediction error and robust to overfitting.
 - The LSBoost model is effective for regression tasks with manageable computational complexity.
 - The PLSR captures spatial correlations, useful for large networks with interdependent stations.
 
-Cons:
+==== Cons:
 - RF: Requires independent observations. Performance decreases as prediction horizon increases.
 - LSBoost: Higher prediction error. Requires proper regularization against overfitting.
 - PLSR: Yields the highest prediction error. Less accurate for smaller networks.
@@ -73,11 +74,11 @@ Cons:
 === Cross-Mode Knowledge Adaptation for Bike Sharing Demand Prediction Using Domain-Adversarial Graph Neural Networks @Liang2024
 This recent paper focuses on improving the state of the art in bike sharing demand prediction by integrating additional features from other transport modes, here subway and ride-hailing traffic data, all from New York City. In order to integrate this heterogeneous graph structured data, recurrent CNNs are combined with graph convolutions to yield transport embeddings. The paper also introduces an adversarial training principle to learn these embeddings, such that the embeddings learned are optimized to be indistinguishable. These embeddings are then fed into a multiple GNNs, combined into a single representation, and passed to a final prediction layer.
 
-Pros:
+==== Pros:
 - The architecture developed seems to give a significant improvement to the compared approaches. However, the dataset itself is one of the most often used in bike-share prediction @YANG2020101521, allowing some degree of comparison of results.
 - The architecture allows extension to integrate very heterogeneous other modes of transportation significant to bike-sharing that would otherwise be very difficult to integrate.
 
-Cons: 
+==== Cons: 
 - The architecture and total approach is complicated, requiring extensive effort to adapt to different formats of data from other systems.
 - The data, especially from ride-hailing, is likely more noisy than the bike-sharing trip data (due to e.g. only several providers contributing to the ride-hailing data, and the different companies providing data using their own standards)
 - It is unclear how much improvement the architecture would give without the additional features.

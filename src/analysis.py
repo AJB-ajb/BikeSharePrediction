@@ -6,6 +6,7 @@ import numpy as np
 import networkx as nx
 
 # Load the CSV data into a DataFrame
+# note: some of the station ids are parsed as floats, so integer conversion is needed for using them as keys
 file_path = '../data/bikeshare-ridership-2024/Bike share ridership 2024-06.csv'
 ridership_table = pd.read_csv("../data/bikeshare-ridership-2024/Bike share ridership 2024-01.csv")
 
@@ -33,6 +34,11 @@ class SparseSequence:
             self.events[index-1] = (t, value)
         else:
             self.events.insert(index, (t, value))
+    def __len__(self):
+        return len(self.events)
+    def __repr__(self):
+        return f'SparseSequence({self.events})'
+    
     
 
 
@@ -57,16 +63,19 @@ class BikeShareData:
 
     def load_data(self, ridership_table):
         for i_row, row in ridership_table.iterrows():
-            start_station_id = row['Start Station Id']
+            start_station_id = int(row['Start Station Id'])
+            end_station_id = int(row['End Station Id'])
+            
             if start_station_id not in self.stations:
                 self.stations[start_station_id] = BikeStation(start_station_id, row['Start Station Name'])
+
+            if end_station_id not in self.stations:
+                self.stations[end_station_id] = BikeStation(end_station_id, row['End Station Name'])
+            
             start_station = self.stations[start_station_id]
             start_time = parse_time(row['Start Time'])
             start_station.num_bikes.set(start_time, start_station.num_bikes.get_value(start_time)[1] - 1)
 
-            end_station_id = row['End Station Id']
-            if end_station_id not in self.stations:
-                self.stations[end_station_id] = BikeStation(end_station_id, row['End Station Name'])
             end_time = parse_time(row['End Time'])
             end_station = self.stations[end_station_id]
             end_station.num_bikes.set(end_time, end_station.num_bikes.get_value(end_time)[1] + 1)
@@ -77,8 +86,11 @@ class BikeShareData:
             with open(file_path, 'wb') as f:
                 pickle.dump(self, f)
                 
-    def load_from_pickle(file_path):
+    def load_from_pickle(file_path = None, name = None):
+        if name is None:
             return pickle.load(open(file_path, 'rb'))
+        else:
+            return pickle.load(open(f'../data/{name}.pkl', 'rb'))
     
     def calc_capacities(self):
         for station in self.stations.values():
