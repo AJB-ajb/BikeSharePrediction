@@ -5,6 +5,7 @@
 By Alexander Busch and Kaifeng Lu as part of the course project of ECE1724H: Bio-inspired Algorithms for Smart Mobility. Dr. Alaa Khamis, University of Toronto, 2024.
 
 = Literature Review
+
 == Scope and Overview
 Due to the vastly growing number of bike sharing systems, bike sharing demand prediction has been investigated by a number of authors in the last $15$ years. While classical machine learning approaches such as regression and boosting have been used in the early developments, in recent years, deep learning approaches have been found to give significant advantages in the forecasting domain @YANG2020101521.
 
