@@ -1,7 +1,7 @@
 # Bike Share Toronto Congestion Analysis
 ## Installation
 + Clone the repository
-+ Open the notebook at [](./documents/midterm_article/visualizations_article.ipynb)
++ Open the [notebook](./documents/midterm_article/visualizations_article.ipynb)
   + Set `download_data = True` and `process_data = True` and run the cell, this should download and process the relevant data
 
 ## Main Data Sources
