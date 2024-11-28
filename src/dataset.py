@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import math
 import pandas as pd
 import os.path as osp
 from torch_geometric.data import InMemoryDataset, Data
@@ -33,6 +34,7 @@ def edge_list_from_matrix(adj):
 
 
 import pyproj
+import warnings
 
 __geod = pyproj.Geod(ellps='WGS84')
 def dst(lat1, lon1, lat2, lon2):
@@ -48,9 +50,10 @@ class BikeGraphDataset(InMemoryDataset):
         Stores roughly ([InRate, OutRate]_t)_(t) as input and (InRate, OutRate)_(t0 < t) to be predicted as output.
     """
     def __init__(self, config, root = None, transform = None, pre_transform = None):
-        self.config = config
+        self.cfg = config
         super().__init__(root, transform, pre_transform)
-        self.data, self.slices, self.N_stations, self.μ, self.σ = torch.load(self.processed_paths[0])
+        warnings.filterwarnings("ignore", category=torch.serialization.SourceChangeWarning)
+        self.data, self.slices, self.N_stations, self.μ, self.σ, self.new2oldidx = torch.load(self.processed_paths[0])
 
     def adjacency_matrix(self, stations, min_stations_connected = 3, max_dst_meters = 500):
         adj = np.zeros((len(stations), len(stations)))
@@ -78,29 +81,38 @@ class BikeGraphDataset(InMemoryDataset):
     @property
     def processed_file_names(self):
         data_dir = self.data_directory
-        return [osp.join(data_dir, 'in_out_pred.pt')]
+        return [osp.join(data_dir, f'in_out_pred_{self.cfg["name"]}.pt')]
 
     def process(self):
-        config = self.config
-        self.data = an.BikeShareData.load(month=config['month'], year=config['year'])
+        cfg = self.cfg
+        self.data = an.BikeShareData.load(month=cfg['month'], year=cfg['year'], force_reprocess=cfg['reload_bike_data'])
         # remove stations with missing lat/lon
         # after having eliminated ghost stations (missing lat/lon), we have a new sequential index
         stations = self.data.stations[~(self.data.stations['lat'].isna() | self.data.stations['lon'].isna())]
-        if self.config['N_stations'] is not None:
-            stations = stations.iloc[:self.config['N_stations']]
+        if self.cfg['N_stations'] is not None:
+            stations = stations.iloc[:self.cfg['N_stations']]
         # thus we have new_index < old_index
         new2old_idx = np.array([old_idx for old_idx in stations.index])
         stations = stations.reset_index(drop=True)
 
-        in_rates, out_rates = self.data.in_rates[new2old_idx, ::5], self.data.out_rates[new2old_idx, ::5] # eliminate ghost stations and subsample every 5 mins
+        # eliminate ghost stations and subsample every supsample mins
+        in_rates = self.data.in_rates[new2old_idx, ::self.cfg['subsample_minutes']]
+        out_rates = self.data.out_rates[new2old_idx, ::self.cfg['subsample_minutes']] 
         N_stations, N_times = in_rates.shape
 
 
         inout_rates = np.concatenate((in_rates[..., None], out_rates[..., None]), axis = 2) # (N_stations × N_times × 2)
-        μ, σ = np.mean(inout_rates), np.std(inout_rates)
-        inout_rates = z_score(inout_rates, μ, σ)
-        N_history = self.config['N_history']
-        n_window = self.config['N_predictions'] + self.config['N_history']
+
+        at_min_mask = self.data.at_min_mask[new2old_idx, ::self.cfg['subsample_minutes']]
+        at_max_mask = self.data.at_max_mask[new2old_idx, ::self.cfg['subsample_minutes']]
+        # at_max_mask applies to in_rates, at_min_mask applies to out_rates
+        mask = np.concatenate([at_max_mask[..., None], at_min_mask[..., None]], axis = 2) # (N_stations × N_times × 2)
+
+
+        self.μ, self.σ = np.mean(inout_rates), np.std(inout_rates)
+        inout_rates = z_score(inout_rates, self.μ, self.σ)
+        N_history = self.cfg['N_history']
+        n_window = self.cfg['N_predictions'] + self.cfg['N_history']
         
         adj_matrix = self.adjacency_matrix(stations)
         edge_list = edge_list_from_matrix(adj_matrix) # (2 × N_edges), "edge_index" in PyG
@@ -112,15 +124,46 @@ class BikeGraphDataset(InMemoryDataset):
         # dataset_len = N_times - n_window + 1
         seqs = []
         for i in tqdm.tqdm(range(N_times - n_window + 1), desc = 'Processing dataset'):
+            mask_window = mask[:, i:i + n_window, :] # (N_stations × n_window × 2)
+
             window = inout_rates[:, i:i + n_window, :] # (N_stations × n_window × 2)
             x = window[:, :N_history, :].reshape(N_stations, -1) 
             y = window[:, N_history:, :].reshape(N_stations, -1)
-            graphdata = geomdata.Data(x = torch.tensor(x), y = torch.tensor(y), edge_index = torch.tensor(edge_list), edge_attr = torch.tensor(edge_attr))
+
+            y_mask = mask_window[:, N_history:, :].reshape(N_stations, -1)
+
+            graphdata = geomdata.Data(x = torch.tensor(x), y = torch.tensor(y), edge_index = torch.tensor(edge_list), edge_attr = torch.tensor(edge_attr), y_mask = torch.tensor(y_mask))
+
             seqs.append(graphdata)
         self.data, self.slices = geomdata.InMemoryDataset.collate(seqs)
-        torch.save((self.data, self.slices, N_stations, μ, σ), self.processed_paths[0])
+        torch.save((self.data, self.slices, N_stations, self.μ, self.σ, new2old_idx), self.processed_paths[0])
 
+    def get_day_splits(self, train_frac = 21 / 30, val_frac = 3 / 30, shuffle = True):
+        """
+            Split the day data randomly in this dataset into train, val and test datasets according to the approximate percentages. I.e. the dataset is split into days and the days are randomly assigned to the datasets. The test dataset is the remainder of the days assigned to train and eval. If shuffle is True, the days are shuffled before assignment, otherwise the first consecutive days are assigned to train and so on, i.e. in these cases, the splits are contiguous.
+            Returns train, val, test datasets.
+        """
+        window_size = self.cfg['N_history'] + self.cfg['N_predictions']
+        N_subsamples_per_day = 24 * 60 // self.cfg['subsample_minutes']
 
+        days_in_dataset = len(self) // N_subsamples_per_day
+        N_train_days = math.floor(train_frac * days_in_dataset)
+        N_val_days = math.floor(val_frac * days_in_dataset)
+
+        day_indices = np.arange(days_in_dataset)
+        if shuffle:
+            np.random.shuffle(day_indices)
+
+        train_days = day_indices[:N_train_days]
+        val_days = day_indices[N_train_days:(N_train_days + N_val_days)]
+        test_days = day_indices[(N_train_days + N_val_days):]
+
+        train_DL_indices = np.concat([np.arange(i*N_subsamples_per_day, (i+1) * N_subsamples_per_day) for i in train_days]) # train dataloader (i.e. subsample) indices
+        val_DL_indices = np.concat([np.arange(i*N_subsamples_per_day, (i+1) * N_subsamples_per_day)for i in val_days])
+        test_DL_indices = np.concat([np.arange(i*N_subsamples_per_day, (i+1) * N_subsamples_per_day) for i in test_days])
+        train = self[train_DL_indices]
+        val = self[val_DL_indices]
+        test = self[test_DL_indices]
+        return train, val, test
         
-
         

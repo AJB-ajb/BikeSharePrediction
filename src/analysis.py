@@ -67,7 +67,7 @@ class BikeShareData:
         ridership_table = preprocess_ridership_table(ridership_table)
         self.process_data_by_minute(ridership_table)
         self.calculate_in_out_rates()
-        self.calc_cum_bikes()
+        self.calc_mask()
         return ridership_table
 
     def process_data_by_minute(self, ridership_table):
@@ -82,8 +82,13 @@ class BikeShareData:
         df = ridership_table
 
         start_time = df['Start Time'].min().replace(second=0, microsecond=0, minute=0)
-        end_time = df['End Time'].max()
+        end_time = df['End Time'].max() # last time of ride, often many days after the end of the month
+        end_of_month = pd.Timestamp(year=start_time.year, month=start_time.month, day=1) + pd.DateOffset(months=1) # after processing, cut off the data at the end of the month
+        num_minutes_in_month = (end_of_month - start_time).days * 24 * 60
+
         num_minutes = math.ceil((end_time - start_time).total_seconds() / 60) + 1
+        
+        
         # Here, we assume that the station ids are contiguous integers starting from 0
         # In practice, some stations are removed, but these then appear as pure 0 rows in the data
         # Here, take the number of stations from the table, which might differ from month to month; if merging data from multiple months, take the maximum 
@@ -110,7 +115,8 @@ class BikeShareData:
         in_bikes[grouped_in.index.get_level_values(0) - station_id0, grouped_in.index.get_level_values(1)] = grouped_in['Trip Id'].values
         out_bikes[grouped_out.index.get_level_values(0) - station_id0, grouped_out.index.get_level_values(1)] = grouped_out['Trip Id'].values
 
-        self.in_bikes, self.out_bikes = in_bikes, out_bikes
+        self.in_bikes = in_bikes[:, :num_minutes_in_month]
+        self.out_bikes = out_bikes[:, :num_minutes_in_month] # cut off the data at the end of the month
 
         return in_bikes, out_bikes
     
@@ -157,8 +163,24 @@ class BikeShareData:
         self.stations = pd.concat([self.stations, missing_stations]).sort_values('station_id').reset_index(drop=True)
         print(f'Loaded {len(self.stations)} stations')
     
-    def calc_cum_bikes(self):
-        cum_in = np.cumsum(self.in_bikes, axis=1)
-        cum_out = np.cumsum(self.out_bikes, axis=1)
-        Δbikes = cum_in - cum_out # the additional number of bikes relative to the number of bikes at the start of the data
-        self.N_bikes = Δbikes - np.min(Δbikes, axis=1)[:, None] # the number of bikes at each station
+    def calc_mask(self, Δtol = 2):
+        """
+            Calculate the at_min_mask and at_max_mask arrays which are boolean arrays of shape (num_stations, num_minutes) that are True if the number of bikes at the station is at max `Δtol` close to the minimum or maximum capacity, respectively.
+        """
+        Δbikes = np.cumsum(self.in_bikes - self.out_bikes, axis=1)
+        
+        # go through each day of the month
+        num_days = Δbikes.shape[1] // (24 * 60)
+        at_min_mask = np.zeros_like(Δbikes, dtype=bool)
+        at_max_mask = np.zeros_like(Δbikes, dtype=bool)
+
+        for day in range(num_days):
+            day_start = day * 24 * 60
+            day_end = (day + 1) * 24 * 60
+            day_max = np.max(Δbikes[:, day_start:day_end], axis=1)
+            day_min = np.min(Δbikes[:, day_start:day_end], axis=1)
+            at_min_mask[:, day_start:day_end] = Δbikes[:, day_start:day_end] - day_min[:, None] <= Δtol
+            at_max_mask[:, day_start:day_end] = day_max[:, None] - Δbikes[:, day_start:day_end] <= Δtol
+
+        self.at_min_mask = at_min_mask
+        self.at_max_mask = at_max_mask

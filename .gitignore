@@ -5,3 +5,8 @@ __pycache__/
 *.gif
 *.png
 ???/processed/
+runs/
+/processed
+/documents/notes
+/logs
+/models
