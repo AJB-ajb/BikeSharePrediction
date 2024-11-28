@@ -20,9 +20,9 @@ class Config:
         self.data_dir = self.base_dir / 'data'
         self.processed_dir = self.data_dir / 'processed'
         self.model_dir = self.base_dir / 'models' 
-        self.log_dir = self.base_dir / 'logs' / self.name
+        self.log_base_dir = self.base_dir / 'logs'
 
-        for dir in [self.data_dir, self.processed_dir, self.model_dir, self.log_dir]:
+        for dir in [self.data_dir, self.processed_dir, self.model_dir, self.log_base_dir]:
             dir.mkdir(exist_ok=True)
 
     def __getitem__(self, name: str):
@@ -56,19 +56,30 @@ class Config:
             'N_history': 12, # take 12 subsampled data points as history
             'N_predictions': 9, # predict the following 9 data points
             'min_stations_connected': 2,
+            'use_time_features': True, # use explicit embeddings of day of week and time of day
             # ----------- hyperparameters ------------
             # ----------- model parameters ------------
             'batch_size': 32,
             'dropout': 0.1,
             'gat_heads': 8,
-            'lstm1_hidden_size': 32,
-            'lstm2_hidden_size': 128,
+            'lstm_params': {
+                'lstm1_hidden_size': 32,
+                'lstm2_hidden_size': 128
+            },
+            'transformer_params': {
+                'n_layers': 4,
+                'n_heads': 8,
+                'd_model': 32,
+                'dim_feedforward': 128
+            },
+            'optimizer': 'Adam', # td
             'optimizer_params': {
                 'lr': 5e-4,
                 'weight_decay': 1e-5
             },
             'epochs': 60,
             'negative_penalty_factor': 0.0, # additional penalty for negative predictions
+            'third_derivative_penalty' : 0.5, # penalty factor for (demand''')^2
             'final_module' : 'lstm' # 'lstm' or 'transformer'; transformer todo
         } 
         cfg = Config(**_dict)
@@ -80,10 +91,15 @@ class Config:
 
     def _calculate_dependent_params(self):
         # calculate dependent parameters
-        self.update({
-            'in_features_per_node' : 2 * self['N_history'],
-            'out_features_per_node' : 4 * self['N_predictions'] # 2 for in and out rates, 2 for in and out demands
-        })
+        self.in_features_per_node = 2 * self.N_history
+        self.out_features_per_node = 4 * self.N_predictions # 2 for in and out rates, 2 for in and out demands
+        self.log_dir = self.log_base_dir / self.name
+        if self.final_module == 'lstm':
+            self.final_module_params = self.lstm_params
+        elif self.final_module == 'transformer':
+            self.final_module_params = self.transformer_params
+        else:
+            raise NotImplementedError(f'{self.final_module} not implemented')
 
     def log(self, writer: th.utils.tensorboard.SummaryWriter):
         hparams = {key: val for key, val in self.__dict__.items() if isinstance(val, (int, float, str))}
@@ -146,14 +162,16 @@ if __name__ == '__main__':
 
     if TEST:
         cfg = Config.test_config()
-        cfg.reload_bike_data = True
+        # cfg.reload_bike_data = True
+        cfg.final_module = 'transformer'
+        cfg._calculate_dependent_params()
 
         dataset = BikeGraphDataset(cfg, root=str())
         #dataset.process() # force reprocessing
 
         device = th.device('cuda' if th.cuda.is_available() else 'cpu')
         print("Running on ", device)
-        model = STGAT(N_nodes = cfg['N_stations'], **cfg.__dict__).to(device)
+        model = STGAT(N_nodes = cfg['N_stations'], cfg = cfg,**cfg.__dict__).to(device)
         dataloader = geomloader.DataLoader(dataset, batch_size=cfg['batch_size'], shuffle=True)
 
         # test the backward pass
@@ -164,7 +182,7 @@ if __name__ == '__main__':
             break
         print("Forward and backward passes work ✔")
 
-    overfit = False
+    overfit = True
     if overfit:
         cfg = Config.overfit_config()
 

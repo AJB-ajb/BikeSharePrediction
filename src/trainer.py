@@ -7,6 +7,41 @@ from st_gat import STGAT
 import os
 import matplotlib.pyplot as plt
 
+import torch
+
+def finite_diff_third_derivative(input_tensor, axis=-1, step_size=1.0):
+    """
+    Compute the fourth order central finite difference approximation of the third derivative of an array along a given axis.
+    
+
+    Args:
+        input_tensor (torch.Tensor): The input tensor.
+        axis (int): The axis along which to compute the derivative.
+        step_size (float): The spacing between points in the grid.
+
+    Returns:
+        torch.Tensor: Tensor with the third derivative along the specified axis.
+    """
+    if step_size <= 0:
+        raise ValueError("Step size must be positive.")
+    
+    # Shift tensors for central difference
+    # note: shifted minus three at i gives the element i+3, thus goes against the stencil convention and we need an additional minus in the stencil
+    shifted_minus3 = torch.roll(input_tensor, shifts=-3, dims=axis)
+    shifted_minus2 = torch.roll(input_tensor, shifts=-2, dims=axis)
+    shifted_minus1 = torch.roll(input_tensor, shifts=-1, dims=axis)
+    shifted_plus1 = torch.roll(input_tensor, shifts=1, dims=axis)
+    shifted_plus2 = torch.roll(input_tensor, shifts=2, dims=axis)
+    shifted_plus3 = torch.roll(input_tensor, shifts=3, dims=axis)
+    
+    stencil = -torch.tensor([1/8, -1, 13/8, 0, -13/8, 1, -1/8])
+    stencil = stencil.to(input_tensor.device)
+
+    third_derivative = (shifted_minus3 * stencil[0] + shifted_minus2 * stencil[1] + shifted_minus1 * stencil[2] + shifted_plus1 * stencil[4] + shifted_plus2 * stencil[5] + shifted_plus3 * stencil[6]) / (step_size ** 3)
+    
+    return third_derivative
+
+
 def loss_fn(y_rate_pred, y_demand_pred, y_truth, y_mask, cfg):
     """
         The loss for the combined rate and demand prediction model.
@@ -14,26 +49,33 @@ def loss_fn(y_rate_pred, y_demand_pred, y_truth, y_mask, cfg):
     """
     rates_loss = th.mean((y_rate_pred - y_truth) ** 2)
     # the demand loss when mask = 1 i.e. when the stations capacity is not at its relative max or min
-    demand_loss_1 = th.mean((y_demand_pred - y_truth) ** 2 * y_mask)
+    demand_loss = th.mean((y_demand_pred - y_truth) ** 2 * y_mask)
     # if the demand is at its max or min, the demand must be higher than the relative truth
-    demand_loss_2 = th.mean(th.relu(y_truth - y_demand_pred)**2 * (~y_mask))
+    demand_loss += th.mean(th.relu(y_truth - y_demand_pred)**2 * (~y_mask))
 
     # add additional loss term to penalize if demand or rates are lower than 0
-    negative_penalty = cfg['negative_penalty_factor'] * th.mean((y_rate_pred < 0) * y_rate_pred ** 2 + (y_demand_pred < 0) * y_demand_pred ** 2)
 
-    return rates_loss + demand_loss_1 + demand_loss_2 + negative_penalty
+    if cfg.negative_penalty_factor is not None:
+        negative_penalty = cfg['negative_penalty_factor'] * th.mean((y_rate_pred < 0) * y_rate_pred ** 2 + (y_demand_pred < 0) * y_demand_pred ** 2)
+        demand_loss += negative_penalty
+    
+    # penalize the third derivative of the demand
+    if cfg.third_derivative_penalty is not None:
+        demand_loss += cfg.third_derivative_penalty * th.mean(finite_diff_third_derivative(y_demand_pred, axis=1, step_size=cfg.subsample_minutes) ** 2)
+
+    return rates_loss + demand_loss
 
 from torch.utils.tensorboard import SummaryWriter
 @th.no_grad()
 def eval(model, dataset, dataloader, cfg):
     """
-        Evaluate the model on the given data, giving loss, rates MSE (quasi-loss), RMSE, MAE, MAPE. 
+        Evaluate the model on the given data, giving loss, rates MSE (quasi-loss), RMSE, MAE. 
         Return evals_list = [MSE, RMSE, …], evals_dict = {'MSE': MSE, …}, predicted rate values ŷ_rate, predicted demand values ŷ_demand, true values y.
     """
     device = next(model.parameters()).device
     model.eval()
     
-    mse, rmse, mae, mape = 0., 0., 0., 0.
+    mse, rmse, mae = 0., 0., 0.
     for i, batch in enumerate(dataloader):
         batch = batch.to(device)
         y_shape = batch.y.shape
@@ -61,22 +103,23 @@ def eval(model, dataset, dataloader, cfg):
         mse += nn.functional.mse_loss(y_rate_pred, y_truth)
         rmse += RMSE(y_truth, y_rate_pred)
         mae += MAE(y_truth, y_rate_pred)
-        mape += MAPE(y_truth, y_rate_pred)
     N_batches = len(dataloader)
-    mse, rmse, mae, mape = mse / N_batches, rmse / N_batches, mae / N_batches, mape / N_batches
-    return [loss, rmse, mae, mape], {'loss':loss, 'MSE': mse, 'RMSE': rmse, 'MAE': mae, 'MAPE': mape}, y_rate_preds, y_demand_preds, y_truths
+    mse, rmse, mae = mse / N_batches, rmse / N_batches, mae / N_batches
+    return [loss, rmse, mae], {'loss':loss, 'MSE': mse, 'RMSE': rmse, 'MAE': mae}, y_rate_preds, y_demand_preds, y_truths
         
 
 def model_train(train_dataloader, val_dataset, val_dataloader, cfg):
     device = th.device('cuda' if th.cuda.is_available() else 'cpu')
-    model = STGAT(N_nodes = cfg['N_stations'], **cfg.__dict__).to(device)
+    model = STGAT(N_nodes = cfg['N_stations'], cfg = cfg, **cfg.__dict__).to(device)
 
     print("Model size in MB:", sum(p.numel() for p in model.parameters()) * 4 / 1024 / 1024)
 
     optimizer = th.optim.Adam(model.parameters(), **(cfg['optimizer_params']))
     writer = SummaryWriter(log_dir=cfg['log_dir'], comment=cfg['name'])
-    # log the configuration as to tensorboard
-    
+
+    # log the configuration as hyperparameters to tensorboard
+    cfg.log(writer)
+
     for epoch in tqdm.tqdm(range(cfg['epochs'])):
         model.train()
         for batch in train_dataloader:
@@ -95,10 +138,8 @@ def model_train(train_dataloader, val_dataset, val_dataloader, cfg):
         if epoch % cfg['eval_interval'] == 0 or epoch == cfg['epochs'] - 1:
             evals_list, evals_dict, y_rate_preds, y_demand_preds, y_truths = eval(model, val_dataset, val_dataloader, cfg)
             metrics_str = ', '.join([f"{key}: {val.item():.5e}" for key, val in evals_dict.items()])
-            
             print(f"Epoch {epoch} val: {metrics_str}")
-            for key, val in evals_dict.items():
-                writer.add_scalar(key, val, epoch)
+
             writer.add_scalars('eval', evals_dict, epoch)
 
             station_id = 4
@@ -108,8 +149,7 @@ def model_train(train_dataloader, val_dataset, val_dataloader, cfg):
             th.save(model.state_dict(), cfg.model_path(epoch))
         writer.flush()
 
-        # log hyperparameters
-        cfg.log(writer)
+    writer.add_hparams({}, metric_dict={'final_eval_loss': evals_dict['loss'], 'final_eval_RMSE': evals_dict['RMSE'], 'final_eval_MAE': evals_dict['MAE']})
 
     writer.close()
 
@@ -148,6 +188,5 @@ def plot_station_over_time(y_rate_preds, y_demand_preds, y_truths, i_station, cf
     return plt.gcf()
 
 
-    
 
-    
+

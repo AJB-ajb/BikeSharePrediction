@@ -125,6 +125,10 @@ class BikeGraphDataset(InMemoryDataset):
         # note, that the graphs are all concatenated, as common in GNNs (different than conventional NN practise, where we would have an additional batch dimension)
         # N_features = 2 * (N_history + N_predictions) = 2 * n_window
         # dataset_len = N_times - n_window + 1
+        times_in_month = np.arange(0, N_times * self.cfg.subsample_minutes, step = self.cfg.subsample_minutes)
+        daytime_minute = times_in_month % (24 * 60)
+        weekday_idx = (times_in_month // (24 * 60)) % 7
+
         seqs = []
         for i in tqdm.tqdm(range(N_times - n_window + 1), desc = 'Processing dataset'):
             mask_window = mask[:, i:i + n_window, :] # (N_stations × n_window × 2)
@@ -135,7 +139,14 @@ class BikeGraphDataset(InMemoryDataset):
 
             y_mask = mask_window[:, N_history:, :].reshape(N_stations, -1)
 
-            graphdata = geomdata.Data(x = torch.tensor(x), y = torch.tensor(y), edge_index = torch.tensor(edge_list), edge_attr = torch.tensor(edge_attr), y_mask = torch.tensor(y_mask))
+            # get daytime and day in week global features (i.e. independent of station, dependent only on time)
+            # i.e. [N_history × 4], each [cos, sin]
+            # use sinusoidal encoding for the time of day and day of week to model the periodicity
+            daytime_angle = 2 * np.pi * daytime_minute[i:i + N_history] / (24 * 60)
+            weekday_angle = 2 * np.pi * weekday_idx[i:i + N_history] / 7
+            time_features = np.stack([np.cos(daytime_angle), np.sin(daytime_angle), np.cos(weekday_angle), np.sin(weekday_angle)], axis = 1)
+
+            graphdata = geomdata.Data(x = torch.tensor(x), y = torch.tensor(y), edge_index = torch.tensor(edge_list), edge_attr = torch.tensor(edge_attr), y_mask = torch.tensor(y_mask), time_features = torch.tensor(time_features, dtype = torch.float32))
 
             seqs.append(graphdata)
         self.data, self.slices = geomdata.InMemoryDataset.collate(seqs)
