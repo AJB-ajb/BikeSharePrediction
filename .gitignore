@@ -4,4 +4,12 @@ __pycache__/
 *.html
 *.gif
 *.png
+*.zip
+*.tmp
 ???/processed/
+runs/
+/processed
+/documents/notes
+/logs
+/models
+/raw
