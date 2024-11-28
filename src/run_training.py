@@ -68,8 +68,8 @@ class Config:
                 'weight_decay': 1e-5
             },
             'epochs': 60,
-            'negative_penalty_factor': 2.0, # penalty for squared distance to 0 for negative rate predictions (as the data itself is non-negative, this is already penalized, but this is a further penalty)
-            # train params
+            'negative_penalty_factor': 0.0, # additional penalty for negative predictions
+            'final_module' : 'lstm' # 'lstm' or 'transformer'; transformer todo
         } 
         cfg = Config(**_dict)
 
@@ -141,34 +141,50 @@ class Config:
 if __name__ == '__main__':
     np.random.seed(42)
     th.manual_seed(42)
-
-    cfg = Config.test_config()
-    #cfg.reload_bike_data = True
-
-    dataset = BikeGraphDataset(cfg, root=str())
-    #dataset.process() # force reprocessing
-
-    device = th.device('cuda' if th.cuda.is_available() else 'cpu')
-    print("Running on ", device)
-    model = STGAT(N_nodes = cfg['N_stations'], **cfg.__dict__).to(device)
-    dataloader = geomloader.DataLoader(dataset, batch_size=cfg['batch_size'], shuffle=True)
-
-    # test the backward pass
-    model.train()
-    for batch in dataloader:
-        result = model.forward(batch.to(device))
-        result.sum().backward()
-        break
-    print("Forward and backward passes work ✔")
-
-    cfg = Config.overfit_config()
     
-    
-    dataset = BikeGraphDataset(cfg, root=str())
-    dataset.process()
-    train, val, test = dataset.get_day_splits(train_frac=0.7, val_frac=0.15)
-    train_dataloader = geomloader.DataLoader(train, batch_size=cfg['batch_size'], shuffle=True)
-    #val_dataloader = geomloader.DataLoader(val, #batch_size=cfg['batch_size'], shuffle=False)
-    model = model_train(train_dataloader, val_dataloader = train_dataloader,val_dataset=val, cfg = cfg)
+    TEST = True
 
-    # plot actual samples for comparison
+    if TEST:
+        cfg = Config.test_config()
+        cfg.reload_bike_data = True
+
+        dataset = BikeGraphDataset(cfg, root=str())
+        #dataset.process() # force reprocessing
+
+        device = th.device('cuda' if th.cuda.is_available() else 'cpu')
+        print("Running on ", device)
+        model = STGAT(N_nodes = cfg['N_stations'], **cfg.__dict__).to(device)
+        dataloader = geomloader.DataLoader(dataset, batch_size=cfg['batch_size'], shuffle=True)
+
+        # test the backward pass
+        model.train()
+        for batch in dataloader:
+            result = model.forward(batch.to(device))
+            result.sum().backward()
+            break
+        print("Forward and backward passes work ✔")
+
+    overfit = False
+    if overfit:
+        cfg = Config.overfit_config()
+
+        dataset = BikeGraphDataset(cfg, root=str())
+        dataset.process()
+        train, val, test = dataset.get_day_splits(train_frac=0.7, val_frac=0.15)
+        train_dataloader = geomloader.DataLoader(train, batch_size=cfg['batch_size'], shuffle=True)
+        #val_dataloader = geomloader.DataLoader(val, #batch_size=cfg['batch_size'], shuffle=False)
+        model = model_train(train_dataloader, val_dataloader = train_dataloader,val_dataset=val, cfg = cfg)
+
+        # plot actual samples for comparison
+
+    default = False
+    if default:
+        cfg = Config.default_config()
+        # cfg.reload_bike_data = True
+        dataset = BikeGraphDataset(cfg, root=str())
+        dataset.process()
+        train, val, test = dataset.get_day_splits(train_frac=0.7, val_frac=0.15)
+        train_dataloader = geomloader.DataLoader(train, batch_size=cfg['batch_size'], shuffle=True)
+        val_dataloader = geomloader.DataLoader(val, batch_size=cfg['batch_size'], shuffle=False)
+        model_train(train_dataloader, val_dataloader = val_dataloader, val_dataset=val, cfg = cfg)
+        # plot actual samples for comparison

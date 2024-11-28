@@ -7,6 +7,7 @@ from torch_geometric.data import InMemoryDataset, Data
 import torch_geometric.data as geomdata
 import analysis as an
 import tqdm
+from pathlib import Path
 
 def z_score(x, mean, std):
     return (x - mean) / std
@@ -89,8 +90,10 @@ class BikeGraphDataset(InMemoryDataset):
         # remove stations with missing lat/lon
         # after having eliminated ghost stations (missing lat/lon), we have a new sequential index
         stations = self.data.stations[~(self.data.stations['lat'].isna() | self.data.stations['lon'].isna())]
-        if self.cfg['N_stations'] is not None:
-            stations = stations.iloc[:self.cfg['N_stations']]
+        if self.cfg.N_stations is not None:
+            stations = stations.iloc[:self.cfg.N_stations]
+        else:
+            self.cfg.N_stations = len(stations)
         # thus we have new_index < old_index
         new2old_idx = np.array([old_idx for old_idx in stations.index])
         stations = stations.reset_index(drop=True)
@@ -165,5 +168,36 @@ class BikeGraphDataset(InMemoryDataset):
         val = self[val_DL_indices]
         test = self[test_DL_indices]
         return train, val, test
-        
-        
+    
+    @property
+    def raw_data_dir(self):
+        return self.cfg['data_dir'] / f'bikeshare-ridership-{self.cfg["year"]}'
+
+    
+    @property
+    def raw_file_names(self):
+        year = self.cfg['year']
+        month = self.cfg['month']
+        return self.raw_data_dir / f'Bike share ridership {year}-{month}.csv'
+    
+    def download(self) -> None:
+        import zipfile
+        import wget
+
+        data_dir = self.cfg.data_dir
+        data_dir.mkdir(parents=True, exist_ok=True)
+        year = self.cfg['year']
+        zip_url = f"https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/7e876c24-177c-4605-9cef-e50dd74c617f/resource/9a9a0163-8114-447c-bf66-790b1a92da51/download/bikeshare-ridership-{year}.zip"
+        zip_path = data_dir / f'bikeshare-ridership-{year}.zip'
+        if zip_path.exists():
+            zip_path.unlink()
+        wget.download(str(zip_url), str(zip_path))
+
+        print(f"Downloaded {zip_url} to {zip_path}")
+        with zipfile.ZipFile(str(zip_path), 'r') as zip_ref:
+            zip_ref.extractall(str(self.raw_data_dir))
+            
+        zip_path.unlink()
+        print(f"Extracted {zip_path}")
+        print("Done")
+    

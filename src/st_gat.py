@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch_geometric.nn as geomnn
 
+
 import itertools
 
 class STGAT(nn.Module):
@@ -14,15 +15,18 @@ class STGAT(nn.Module):
         - out_features_per_node: number of numbers that are predicted for each node
         normally out_channels := in_channels
     """
-    def __init__(self, in_features_per_node, out_features_per_node, N_nodes, gat_heads, dropout, lstm1_hidden_size, lstm2_hidden_size, **kwargs):
+    def __init__(self, in_features_per_node, out_features_per_node, N_nodes, gat_heads, dropout, lstm1_hidden_size, lstm2_hidden_size, final_module, **kwargs):
         super(STGAT, self).__init__()
 
         self.dropout = nn.Dropout(p = dropout)
         self.gat = geomnn.GATConv(in_channels= in_features_per_node, out_channels= in_features_per_node, heads = gat_heads, dropout = 0, concat = False)
 
-        self.lstm1 = nn.LSTM(input_size=N_nodes, hidden_size=lstm1_hidden_size, num_layers=1) # outputs sequence outputs with lstm1_hidden_size
-        self.lstm2 = nn.LSTM(input_size=lstm1_hidden_size, hidden_size = lstm2_hidden_size, num_layers=1)
-        self.linear = nn.Linear(lstm2_hidden_size, N_nodes * out_features_per_node) 
+        if final_module == 'lstm':
+            self.lstm1 = nn.LSTM(input_size=N_nodes, hidden_size=lstm1_hidden_size, num_layers=1) # outputs sequence outputs with lstm1_hidden_size
+            self.lstm2 = nn.LSTM(input_size=lstm1_hidden_size, hidden_size = lstm2_hidden_size, num_layers=1)
+            self.linear = nn.Linear(lstm2_hidden_size, N_nodes * out_features_per_node) 
+        elif final_module == 'transformer':
+            raise NotImplementedError('transformer not yet implemented')
 
         # LSTM parameter initialization
         for name, param in itertools.chain(self.lstm1.named_parameters(), self.lstm2.named_parameters()):
