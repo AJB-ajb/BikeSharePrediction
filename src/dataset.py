@@ -82,7 +82,7 @@ class BikeGraphDataset(InMemoryDataset):
     @property
     def processed_file_names(self):
         data_dir = self.data_directory
-        return [osp.join(data_dir, f'in_out_pred_{self.cfg["name"]}.pt')]
+        return [osp.join(data_dir, f'in_out_pred_{self.cfg.year}_{self.cfg.month}_{self.cfg.name}.pt')]
 
     def process(self):
         cfg = self.cfg
