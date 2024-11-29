@@ -91,16 +91,19 @@ class Config:
 
     def _calculate_dependent_params(self):
         # calculate dependent parameters
-        N_features_per_in_step_node = 2 # in and out rates
+        N_in_features_per_step_node = 2 # in and out rates
         N_features_per_out_step_node = 4 # in and out rates and demands
 
-        self.in_features_per_node = N_features_per_in_step_node * self.N_history
+        self.in_features_per_node = N_in_features_per_step_node * self.N_history
         self.out_features_per_node = N_features_per_out_step_node * self.N_predictions # 2 for in and out rates, 2 for in and out demands
 
-        # calculate global in features per step, needed for LSTM, and linear layer
-        self.N_in_features_per_step_with_global = self.N_stations * self.in_features_per_node
-        if self.use_time_features:
-            self.N_in_features_per_step_with_global += 4 # 4 time features, weekday, daytime (sin, cos)
+        if self.N_stations is not None:
+            # calculate global in features per step, needed for LSTM, and linear layer
+            self.N_in_features_per_step_with_global = self.N_stations * N_in_features_per_step_node
+            if self.use_time_features:
+                self.N_in_features_per_step_with_global += 4 # 4 time features, weekday, daytime (sin, cos)
+        else:
+            print("Warning: N_stations not yet set, dependent parameters are not yet fully computed and have to be updated later")
 
         self.log_dir = self.log_base_dir / self.name
         if self.final_module == 'lstm':
@@ -172,11 +175,11 @@ if __name__ == '__main__':
     if TEST:
         cfg = Config.test_config()
         # cfg.reload_bike_data = True
-        cfg.final_module = 'transformer'
-        cfg._calculate_dependent_params()
+        # cfg.final_module = 'transformer'
 
         dataset = BikeGraphDataset(cfg, root=str())
-        #dataset.process() # force reprocessing
+        dataset.process() # force reprocessing
+        cfg._calculate_dependent_params()
 
         device = th.device('cuda' if th.cuda.is_available() else 'cpu')
         print("Running on ", device)
@@ -194,18 +197,16 @@ if __name__ == '__main__':
     overfit = True
     if overfit:
         cfg = Config.overfit_config()
-        cfg.final_module = 'transformer'
+        cfg.final_module = 'lstm'
         cfg.optimizer_params['lr'] = 5e-4
-        cfg._calculate_dependent_params()
-
         dataset = BikeGraphDataset(cfg, root=str())
         dataset.process()
+        cfg._calculate_dependent_params()
+
         train, val, test = dataset.get_day_splits(train_frac=0.7, val_frac=0.15)
         train_dataloader = geomloader.DataLoader(train, batch_size=cfg['batch_size'], shuffle=True)
-        #val_dataloader = geomloader.DataLoader(val, #batch_size=cfg['batch_size'], shuffle=False)
-        model = model_train(train_dataloader, val_dataloader = train_dataloader,val_dataset=val, cfg = cfg)
-
-        # plot actual samples for comparison
+        test_dataloader = geomloader.DataLoader(test, batch_size=cfg['batch_size'], shuffle=False)
+        model = model_train(train_dataloader, val_dataloader = train_dataloader,val_dataset=val, test_dataset = test, test_dataloader = test_dataloader, cfg = cfg)
 
     default = False
     if default:
@@ -213,8 +214,11 @@ if __name__ == '__main__':
         # cfg.reload_bike_data = True
         dataset = BikeGraphDataset(cfg, root=str())
         dataset.process()
+        cfg._calculate_dependent_params()
+
         train, val, test = dataset.get_day_splits(train_frac=0.7, val_frac=0.15)
         train_dataloader = geomloader.DataLoader(train, batch_size=cfg['batch_size'], shuffle=True)
         val_dataloader = geomloader.DataLoader(val, batch_size=cfg['batch_size'], shuffle=False)
-        model_train(train_dataloader, val_dataloader = val_dataloader, val_dataset=val, cfg = cfg)
+        test_dataloader = geomloader.DataLoader(test, batch_size=cfg['batch_size'], shuffle=False)
+        model_train(train_dataloader, val_dataloader = val_dataloader, val_dataset=val, test_dataloader=test_dataloader, test_dataset=test, cfg = cfg)
         # plot actual samples for comparison

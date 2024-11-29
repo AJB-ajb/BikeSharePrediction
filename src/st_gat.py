@@ -30,7 +30,7 @@ class STGAT(nn.Module):
 
         if final_module == 'lstm':
             lstm1_hidden_size, lstm2_hidden_size = final_module_params['lstm1_hidden_size'], final_module_params['lstm2_hidden_size']
-            self.lstm1 = nn.LSTM(input_size=N_nodes * self.N_features_with_global, hidden_size=lstm1_hidden_size, num_layers=1) # outputs sequence outputs with lstm1_hidden_size
+            self.lstm1 = nn.LSTM(input_size=self.N_features_with_global, hidden_size=lstm1_hidden_size, num_layers=1) # outputs sequence outputs with lstm1_hidden_size
             self.lstm2 = nn.LSTM(input_size=lstm1_hidden_size, hidden_size = lstm2_hidden_size, num_layers=1)
             self.linear = nn.Linear(lstm2_hidden_size, N_nodes * out_features_per_node) 
 
@@ -46,7 +46,7 @@ class STGAT(nn.Module):
         elif final_module == 'transformer':
             d_model, nhead, num_layers, dim_feedforward = final_module_params['d_model'], final_module_params['n_heads'], final_module_params['n_layers'], final_module_params['dim_feedforward']
 
-            self.transformer = DecoderOnlyModel(N_nodes * self.N_features_with_global, d_model, nhead, num_layers, dim_feedforward, N_history, dropout)
+            self.transformer = DecoderOnlyModel(self.N_features_with_global, d_model, nhead, num_layers, dim_feedforward, N_history, dropout)
             self.linear = nn.Linear(d_model, N_nodes * out_features_per_node) 
 
         else: 
@@ -71,14 +71,17 @@ class STGAT(nn.Module):
         # for lstm, the sequence length must be the first dimension, i.e. swap and expand
         x = th.reshape(x, (batch_size, N_nodes, seq_length, self.N_features))
 
-        if self.cfg.use_time_features:
-            # expand time features to match N_nodes
-            # time features in input is # [batch_size * seq_length, 4] (seq_length = N_history)
-            time_features = batch.time_features.reshape(batch_size, 1, seq_length, 4).expand(batch_size, N_nodes, seq_length, 4) 
-            x = th.cat((x, time_features), dim = -1) # -> [batch_size × N_nodes × seq_length × (N_features + 4)]
-            
         x = th.movedim(x, 2, 0).reshape(seq_length, batch_size, -1) # i.e. move the sequence dimension to the front 
         # -> [seq_length × batch_size × (N_nodes * N_features)]
+
+        if self.cfg.use_time_features:
+            # 
+            # time features in input is # [batch_size * seq_length, 4] (seq_length = N_history)
+            time_features = batch.time_features.reshape(batch_size, seq_length, 4).movedim(0, 1)
+            
+            # .expand(batch_size, N_nodes, seq_length, 4) 
+            x = th.cat((x, time_features), dim = -1) # -> [ seq_length × batch_size × (N_features + 4)]
+            
 
         if self.final_module == 'lstm':
             x, _ = self.lstm1(x) # -> [h_1, h_2, …]

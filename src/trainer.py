@@ -156,8 +156,6 @@ def model_train(train_dataloader, val_dataset, val_dataloader, test_dataloader, 
             
             print(f"Epoch {epoch} val: {metrics_str}")
 
-            writer.add_scalar('Loss/eval', evals_dict['Loss'], epoch)
-            del evals_dict['Loss']
             mse_per_future_step = evals_dict.pop('MSE per step')
             for i, mse in enumerate(mse_per_future_step):
                 writer.add_scalar(f'MSE/eval/step_{i}', mse, epoch)
@@ -171,7 +169,7 @@ def model_train(train_dataloader, val_dataset, val_dataloader, test_dataloader, 
             th.save(model.state_dict(), cfg.model_path(epoch))
         writer.flush()
 
-    writer.add_hparams({}, metric_dict={'final_eval_loss': evals_dict['loss'], 'final_eval_RMSE': evals_dict['RMSE'], 'final_eval_MAE': evals_dict['MAE']})
+    writer.add_hparams({}, metric_dict={'final_eval_loss': evals_dict['Loss'], 'final_eval_RMSE': evals_dict['RMSE'], 'final_eval_MAE': evals_dict['MAE']})
 
     test_metrics, test_metrics_dict, y_rate_preds, y_demand_preds, y_truths = eval(model, test_dataset, test_dataloader, cfg)
     scalars = {key: val.item() for key, val in test_metrics_dict.items() if val.dim() == 0}

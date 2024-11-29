@@ -94,6 +94,7 @@ class BikeGraphDataset(InMemoryDataset):
             stations = stations.iloc[:self.cfg.N_stations]
         else:
             self.cfg.N_stations = len(stations)
+            self.cfg._calculate_dependent_params()
         # thus we have new_index < old_index
         new2old_idx = np.array([old_idx for old_idx in stations.index])
         stations = stations.reset_index(drop=True)
