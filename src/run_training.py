@@ -194,7 +194,7 @@ if __name__ == '__main__':
             break
         print("Forward and backward passes work ✔")
 
-    overfit = True
+    overfit = False
     if overfit:
         cfg = Config.overfit_config()
         cfg.final_module = 'lstm'
@@ -208,7 +208,7 @@ if __name__ == '__main__':
         test_dataloader = geomloader.DataLoader(test, batch_size=cfg['batch_size'], shuffle=False)
         model = model_train(train_dataloader, val_dataloader = train_dataloader,val_dataset=val, test_dataset = test, test_dataloader = test_dataloader, cfg = cfg)
 
-    default = False
+    default = True
     if default:
         cfg = Config.default_config()
         # cfg.reload_bike_data = True

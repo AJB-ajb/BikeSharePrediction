@@ -173,9 +173,9 @@ class BikeGraphDataset(InMemoryDataset):
         val_days = day_indices[N_train_days:(N_train_days + N_val_days)]
         test_days = day_indices[(N_train_days + N_val_days):]
 
-        train_DL_indices = np.concat([np.arange(i*N_subsamples_per_day, (i+1) * N_subsamples_per_day) for i in train_days]) # train dataloader (i.e. subsample) indices
-        val_DL_indices = np.concat([np.arange(i*N_subsamples_per_day, (i+1) * N_subsamples_per_day)for i in val_days])
-        test_DL_indices = np.concat([np.arange(i*N_subsamples_per_day, (i+1) * N_subsamples_per_day) for i in test_days])
+        train_DL_indices = np.concatenate([np.arange(i*N_subsamples_per_day, (i+1) * N_subsamples_per_day) for i in train_days]) # train dataloader (i.e. subsample) indices
+        val_DL_indices = np.concatenate([np.arange(i*N_subsamples_per_day, (i+1) * N_subsamples_per_day)for i in val_days])
+        test_DL_indices = np.concatenate([np.arange(i*N_subsamples_per_day, (i+1) * N_subsamples_per_day) for i in test_days])
         train = self[train_DL_indices]
         val = self[val_DL_indices]
         test = self[test_DL_indices]
