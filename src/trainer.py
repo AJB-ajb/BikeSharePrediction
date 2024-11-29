@@ -76,6 +76,8 @@ def eval(model, dataset, dataloader, cfg):
     model.eval()
     
     mse, rmse, mae = 0., 0., 0.
+    mse_per_future_step = th.zeros(cfg.N_predictions, dtype=th.float32, device=device)
+
     for i, batch in enumerate(dataloader):
         batch = batch.to(device)
         y_shape = batch.y.shape
@@ -100,21 +102,33 @@ def eval(model, dataset, dataloader, cfg):
         y_demand_preds[i, :y_pred_rel.shape[0], ...] = y_demand_pred
         y_truths[i, :y_pred_rel.shape[0], ...] = y_truth
 
+        # --------------- compute standard metrics ----------------
         mse += nn.functional.mse_loss(y_rate_pred, y_truth)
         rmse += RMSE(y_truth, y_rate_pred)
         mae += MAE(y_truth, y_rate_pred)
+        
+        # --------------- compute averaged mse for each step in the future separately ----------------
+        mse_per_future_step += (y_rate_pred - y_truth).pow(2).mean(dim = (0, 2))
+
     N_batches = len(dataloader)
     mse, rmse, mae = mse / N_batches, rmse / N_batches, mae / N_batches
-    return [loss, rmse, mae], {'loss':loss, 'MSE': mse, 'RMSE': rmse, 'MAE': mae}, y_rate_preds, y_demand_preds, y_truths
-        
+    mse_per_future_step /= N_batches
 
-def model_train(train_dataloader, val_dataset, val_dataloader, cfg):
+    return [loss, rmse, mae], {'Loss':loss, 'MSE': mse, 'RMSE': rmse, 'MAE': mae, 'MSE per step': mse_per_future_step}, y_rate_preds, y_demand_preds, y_truths
+
+def instantiate_optimizer(model, cfg):
+    optimizer_name = cfg['optimizer']
+    optimizer_params = cfg['optimizer_params']
+    optim = getattr(th.optim, optimizer_name)
+    return optim(model.parameters(), **optimizer_params)    
+
+def model_train(train_dataloader, val_dataset, val_dataloader, test_dataloader, test_dataset, cfg):
     device = th.device('cuda' if th.cuda.is_available() else 'cpu')
     model = STGAT(N_nodes = cfg['N_stations'], cfg = cfg, **cfg.__dict__).to(device)
 
     print("Model size in MB:", sum(p.numel() for p in model.parameters()) * 4 / 1024 / 1024)
 
-    optimizer = th.optim.Adam(model.parameters(), **(cfg['optimizer_params']))
+    optimizer = instantiate_optimizer(model, cfg)
     writer = SummaryWriter(log_dir=cfg['log_dir'], comment=cfg['name'])
 
     # log the configuration as hyperparameters to tensorboard
@@ -137,10 +151,18 @@ def model_train(train_dataloader, val_dataset, val_dataloader, cfg):
             optimizer.step()
         if epoch % cfg['eval_interval'] == 0 or epoch == cfg['epochs'] - 1:
             evals_list, evals_dict, y_rate_preds, y_demand_preds, y_truths = eval(model, val_dataset, val_dataloader, cfg)
-            metrics_str = ', '.join([f"{key}: {val.item():.5e}" for key, val in evals_dict.items()])
+            scalars = {key: val.item() for key, val in evals_dict.items() if val.dim() == 0}
+            metrics_str = ', '.join([f"{key}: {val:.5e}" for key, val in scalars.items()])
+            
             print(f"Epoch {epoch} val: {metrics_str}")
 
-            writer.add_scalars('eval', evals_dict, epoch)
+            writer.add_scalar('Loss/eval', evals_dict['Loss'], epoch)
+            del evals_dict['Loss']
+            mse_per_future_step = evals_dict.pop('MSE per step')
+            for i, mse in enumerate(mse_per_future_step):
+                writer.add_scalar(f'MSE/eval/step_{i}', mse, epoch)
+            for key, val in evals_dict.items():
+                writer.add_scalar(f'{key}/eval', val, epoch)
 
             station_id = 4
             _plot = plot_station_over_time(y_rate_preds.cpu(), y_demand_preds.cpu(), y_truths.cpu(), station_id, cfg)
@@ -151,7 +173,15 @@ def model_train(train_dataloader, val_dataset, val_dataloader, cfg):
 
     writer.add_hparams({}, metric_dict={'final_eval_loss': evals_dict['loss'], 'final_eval_RMSE': evals_dict['RMSE'], 'final_eval_MAE': evals_dict['MAE']})
 
+    test_metrics, test_metrics_dict, y_rate_preds, y_demand_preds, y_truths = eval(model, test_dataset, test_dataloader, cfg)
+    scalars = {key: val.item() for key, val in test_metrics_dict.items() if val.dim() == 0}
+    metrics_str = ', '.join([f"{key}: {val:.5e}" for key, val in scalars.items()])
+    
+    print(f"Final test metrics: {metrics_str}")
+    writer.add_hparams({}, metric_dict={'final_test_loss': test_metrics_dict['Loss'], 'final_test_RMSE': test_metrics_dict['RMSE'], 'final_test_MAE': test_metrics_dict['MAE']})
+
     writer.close()
+    return model
 
 def reshape_data4viz(y, cfg):
     """

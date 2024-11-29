@@ -91,8 +91,17 @@ class Config:
 
     def _calculate_dependent_params(self):
         # calculate dependent parameters
-        self.in_features_per_node = 2 * self.N_history
-        self.out_features_per_node = 4 * self.N_predictions # 2 for in and out rates, 2 for in and out demands
+        N_features_per_in_step_node = 2 # in and out rates
+        N_features_per_out_step_node = 4 # in and out rates and demands
+
+        self.in_features_per_node = N_features_per_in_step_node * self.N_history
+        self.out_features_per_node = N_features_per_out_step_node * self.N_predictions # 2 for in and out rates, 2 for in and out demands
+
+        # calculate global in features per step, needed for LSTM, and linear layer
+        self.N_in_features_per_step_with_global = self.N_stations * self.in_features_per_node
+        if self.use_time_features:
+            self.N_in_features_per_step_with_global += 4 # 4 time features, weekday, daytime (sin, cos)
+
         self.log_dir = self.log_base_dir / self.name
         if self.final_module == 'lstm':
             self.final_module_params = self.lstm_params
@@ -185,6 +194,9 @@ if __name__ == '__main__':
     overfit = True
     if overfit:
         cfg = Config.overfit_config()
+        cfg.final_module = 'transformer'
+        cfg.optimizer_params['lr'] = 5e-4
+        cfg._calculate_dependent_params()
 
         dataset = BikeGraphDataset(cfg, root=str())
         dataset.process()

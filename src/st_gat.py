@@ -23,9 +23,7 @@ class STGAT(nn.Module):
 
         # number of features per node per time step in the input data
         self.N_features = in_features_per_node // N_history
-        self.N_features_with_global = self.N_features
-        if cfg.use_time_features:
-            self.N_features_with_global += 4 # 4 time features
+        self.N_features_with_global = cfg.N_in_features_per_step_with_global
 
         self.cfg = cfg
         self.final_module = final_module
@@ -65,7 +63,7 @@ class STGAT(nn.Module):
         N_nodes = batch.num_nodes // batch_size 
         seq_length = self.cfg.N_history
 
-        # should be [batch_size * N_nodes × N_history * features]
+        # x should be [batch_size * N_nodes × N_history * features]
         x = self.gat(x, edge_index) # -> batch_size * N_nodes × (N_history * N_Features) (i.e. in total N_nodes… × Features…)
         x = self.dropout(x) 
 
