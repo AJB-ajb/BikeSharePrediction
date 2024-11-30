@@ -50,11 +50,12 @@ class BikeGraphDataset(InMemoryDataset):
         Dataset storing projessed bike sharing rate data for GNN training.
         Stores roughly ([InRate, OutRate]_t)_(t) as input and (InRate, OutRate)_(t0 < t) to be predicted as output.
     """
-    def __init__(self, config, root = None, transform = None, pre_transform = None):
+    def __init__(self, config):
         self.cfg = config
-        super().__init__(root, transform, pre_transform)
+        root = self.cfg.processed_dir # store the graph dataset - processed data also in the processed directory, along with the bike data
+        super().__init__(root, transform = None, pre_transform = None)
         warnings.filterwarnings("ignore", category=torch.serialization.SourceChangeWarning)
-        self.data, self.slices, self.N_stations, self.μ, self.σ, self.new2oldidx = torch.load(self.processed_paths[0])
+        self._data, self.slices, self.N_stations, self.μ, self.σ, self.new2oldidx = torch.load(self.processed_paths[0])
 
     def adjacency_matrix(self, stations, min_stations_connected = 3, max_dst_meters = 500):
         adj = np.zeros((len(stations), len(stations)))
@@ -74,15 +75,9 @@ class BikeGraphDataset(InMemoryDataset):
         return adj
     
     @property
-    def data_directory(self):
-        dir = osp.join(osp.dirname(osp.realpath(__file__)), '../data')
-        return dir
-
-    
-    @property
     def processed_file_names(self):
-        data_dir = self.data_directory
-        return [osp.join(data_dir, f'in_out_pred_{self.cfg.year}_{self.cfg.month}_{self.cfg.name}.pt')]
+        data_dir = self.cfg.data_dir
+        return [str(data_dir / f'in_out_pred_{self.cfg.year}_{self.cfg.month}_{self.cfg.name}.pt')]
 
     def process(self):
         cfg = self.cfg
@@ -190,7 +185,7 @@ class BikeGraphDataset(InMemoryDataset):
     def raw_file_names(self):
         year = self.cfg['year']
         month = self.cfg['month']
-        return self.raw_data_dir / f'Bike share ridership {year}-{month}.csv'
+        return str(self.raw_data_dir / f'Bike share ridership {year}-{month}.csv')
     
     def download(self) -> None:
         import zipfile

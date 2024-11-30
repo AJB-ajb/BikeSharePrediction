@@ -3,11 +3,15 @@ import torch.nn as nn
 import numpy as np
 from dataset import z_score, un_z_score, RMSE, MAE, MAPE
 import tqdm
-from st_gat import STGAT
+
+
 import os
 import matplotlib.pyplot as plt
+import torch_geometric.loader as geomloader
 
-import torch
+from st_gat import STGAT
+from linear_model import LinearModel
+from dataset import BikeGraphDataset
 
 def finite_diff_third_derivative(input_tensor, axis=-1, step_size=1.0):
     """
@@ -27,14 +31,14 @@ def finite_diff_third_derivative(input_tensor, axis=-1, step_size=1.0):
     
     # Shift tensors for central difference
     # note: shifted minus three at i gives the element i+3, thus goes against the stencil convention and we need an additional minus in the stencil
-    shifted_minus3 = torch.roll(input_tensor, shifts=-3, dims=axis)
-    shifted_minus2 = torch.roll(input_tensor, shifts=-2, dims=axis)
-    shifted_minus1 = torch.roll(input_tensor, shifts=-1, dims=axis)
-    shifted_plus1 = torch.roll(input_tensor, shifts=1, dims=axis)
-    shifted_plus2 = torch.roll(input_tensor, shifts=2, dims=axis)
-    shifted_plus3 = torch.roll(input_tensor, shifts=3, dims=axis)
+    shifted_minus3 = th.roll(input_tensor, shifts=-3, dims=axis)
+    shifted_minus2 = th.roll(input_tensor, shifts=-2, dims=axis)
+    shifted_minus1 = th.roll(input_tensor, shifts=-1, dims=axis)
+    shifted_plus1 = th.roll(input_tensor, shifts=1, dims=axis)
+    shifted_plus2 = th.roll(input_tensor, shifts=2, dims=axis)
+    shifted_plus3 = th.roll(input_tensor, shifts=3, dims=axis)
     
-    stencil = -torch.tensor([1/8, -1, 13/8, 0, -13/8, 1, -1/8])
+    stencil = -th.tensor([1/8, -1, 13/8, 0, -13/8, 1, -1/8])
     stencil = stencil.to(input_tensor.device)
 
     third_derivative = (shifted_minus3 * stencil[0] + shifted_minus2 * stencil[1] + shifted_minus1 * stencil[2] + shifted_plus1 * stencil[4] + shifted_plus2 * stencil[5] + shifted_plus3 * stencil[6]) / (step_size ** 3)
@@ -122,7 +126,29 @@ def instantiate_optimizer(model, cfg):
     optim = getattr(th.optim, optimizer_name)
     return optim(model.parameters(), **optimizer_params)    
 
-def model_train(train_dataloader, val_dataset, val_dataloader, test_dataloader, test_dataset, cfg):
+def fit_and_evaluate(cfg):
+    dataset = BikeGraphDataset(cfg)
+    cfg._calculate_dependent_params()
+    train_dataset, val_dataset, test_dataset = dataset.get_day_splits(train_frac=0.7, val_frac=0.15)
+
+    # instantiate model:
+    if cfg.model == 'STGAT':
+        model = STGAT(N_nodes = cfg['N_stations'], cfg = cfg, **cfg.__dict__)
+        model = model_train(train_dataset, val_dataset, test_dataset, cfg)
+
+    elif cfg.model == 'LinearModel':
+        model = LinearModel(cfg)
+        model.train(train_dataset)
+
+        test_dataloader = geomloader.DataLoader(test_dataset, batch_size = 32, shuffle = False)
+
+        evals_list, evals_dict, y_rate_preds, y_demand_preds, y_truths = eval(model, test_dataset, test_dataloader, cfg)
+        scalars = {key: val.item() for key, val in evals_dict.items() if val.dim() == 0}
+        metrics_str = ', '.join([f"{key}: {val:.5e}" for key, val in scalars.items()])
+        print(f"Linear model test: {metrics_str}")
+
+
+def model_train(train_dataset, val_dataset, test_dataset, cfg):
     device = th.device('cuda' if th.cuda.is_available() else 'cpu')
     model = STGAT(N_nodes = cfg['N_stations'], cfg = cfg, **cfg.__dict__).to(device)
 
@@ -134,6 +160,13 @@ def model_train(train_dataloader, val_dataset, val_dataloader, test_dataloader, 
     # log the configuration as hyperparameters to tensorboard
     cfg.log(writer)
 
+    train_dataloader = geomloader.DataLoader(train_dataset, batch_size=cfg['batch_size'], shuffle=True)
+    val_dataloader = geomloader.DataLoader(val_dataset, batch_size=cfg['batch_size'], shuffle=False)
+    test_dataloader = geomloader.DataLoader(test_dataset, batch_size=cfg['batch_size'], shuffle=False)
+
+    val_losses = []
+    val_mses = []
+
     for epoch in tqdm.tqdm(range(cfg['epochs'])):
         model.train()
         for batch in train_dataloader:
@@ -142,7 +175,6 @@ def model_train(train_dataloader, val_dataset, val_dataloader, test_dataloader, 
             # get the rate and demand predictions
             y_rate_pred = y_pred[:, :, :2].reshape(batch.y.shape)
             y_demand_pred = y_pred[:, :, 2:].reshape(batch.y.shape)
-            
             
             loss = loss_fn(y_rate_pred, y_demand_pred, batch.y, batch.y_mask, cfg)
             
@@ -159,8 +191,11 @@ def model_train(train_dataloader, val_dataset, val_dataloader, test_dataloader, 
             mse_per_future_step = evals_dict.pop('MSE per step')
             for i, mse in enumerate(mse_per_future_step):
                 writer.add_scalar(f'MSE/eval/step_{i}', mse, epoch)
-            for key, val in evals_dict.items():
-                writer.add_scalar(f'{key}/eval', val, epoch)
+            for key, value in evals_dict.items():
+                writer.add_scalar(f'{key}/eval', value, epoch)
+
+            val_losses.append(evals_dict['Loss'])
+            val_mses.append(evals_dict['MSE'])
 
             station_id = 4
             _plot = plot_station_over_time(y_rate_preds.cpu(), y_demand_preds.cpu(), y_truths.cpu(), station_id, cfg)
@@ -169,14 +204,19 @@ def model_train(train_dataloader, val_dataset, val_dataloader, test_dataloader, 
             th.save(model.state_dict(), cfg.model_path(epoch))
         writer.flush()
 
-    writer.add_hparams({}, metric_dict={'final_eval_loss': evals_dict['Loss'], 'final_eval_RMSE': evals_dict['RMSE'], 'final_eval_MAE': evals_dict['MAE']})
+    writer.add_hparams({}, metric_dict={'final_eval_loss': evals_dict['Loss'], 'final_eval_RMSE': evals_dict['RMSE'], 'final_eval_MAE': evals_dict['MAE'], 'min_val_loss': min(val_losses), 'min_val_mse': min(val_mses)})
 
     test_metrics, test_metrics_dict, y_rate_preds, y_demand_preds, y_truths = eval(model, test_dataset, test_dataloader, cfg)
     scalars = {key: val.item() for key, val in test_metrics_dict.items() if val.dim() == 0}
     metrics_str = ', '.join([f"{key}: {val:.5e}" for key, val in scalars.items()])
     
     print(f"Final test metrics: {metrics_str}")
-    writer.add_hparams({}, metric_dict={'final_test_loss': test_metrics_dict['Loss'], 'final_test_RMSE': test_metrics_dict['RMSE'], 'final_test_MAE': test_metrics_dict['MAE']})
+    writer.add_hparams({}, metric_dict={'final_test_Loss': test_metrics_dict['Loss'], 'final_test_RMSE': test_metrics_dict['RMSE'], 'final_test_MAE': test_metrics_dict['MAE']})
+
+    # calculate minimum validation mse and minimum validation loss
+    
+
+
 
     writer.close()
     return model
@@ -214,7 +254,4 @@ def plot_station_over_time(y_rate_preds, y_demand_preds, y_truths, i_station, cf
     plt.gca().set(title='Station {}'.format(i_station), xlabel='time [hours]', ylabel='Bike In-Rate')
     plt.xticks(times[::12], times[::12] * cfg['subsample_minutes'] // 60)
     return plt.gcf()
-
-
-
 
