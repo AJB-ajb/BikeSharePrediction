@@ -51,58 +51,75 @@ Based on the literature, we compare the following machine learning approaches to
 
 === Bike-Sharing Demand Prediction at Community Level under COVID-19 Using Deep Learning @Dastjerdi2022
 
-This article investigates short-term bike-sharing demand forecasting in Montreal. It compares deep learning techniques for predicting bike pickups 15 minutes ahead in six communities identified within the city’s bike-sharing network. The study compares the performance of LSTMs (Long Short Term Memory, a recurrent network type), CNN (Convolutional Neural Network)-LSTM hybrids, and ARIMA (Auto-Regressive Integrated Moving Average). The authors trained the models based on two
-main feature attributes: historical demand data in 15-minute intervals and weather conditions. They found that the CNN-LSTM hybrid model outperforms the other models (MAE of 3.00 and RMSE of 4.77), compared to the LSTM model (MAE of 4.48 and RMSE of 6.86), and the ARIMA (MAE of 50.95 and RMSE of 61.17).
+This article investigates short-term bike-sharing demand forecasting in Montreal. It compares deep learning techniques for predicting bike pickups 15 minutes ahead in six communities identified within the city’s bike-sharing network. The study compares the performance of LSTMs (Long Short Term Memory, a recurrent network type), CNN (Convolutional Neural Network)-LSTM hybrids, and ARIMA (Auto-Regressive Integrated Moving Average). The authors trained the models based on two main feature attributes: historical demand data in 15-minute intervals and weather conditions. 
 
-==== Pros
+They found that the CNN-LSTM hybrid model outperforms the other models (MAE of 3.00 and RMSE of 4.77), compared to the LSTM model (MAE of 4.48 and RMSE of 6.86), and the ARIMA (MAE of 50.95 and RMSE of 61.17). 
 
-• LSTM Models: These were found to capture temporal dependencies effectively with moderate complexity.
+#let empty(term) = box[]
 
-• CNN-LSTM Hybrid Models: These were found to combine spatial and temporal learning for improved accuracy in complex data.
+==== Pros 
 
-• The ARIMA Model is fast to train and easy to interpret.
+#[#set list(indent:  10pt,marker: ([•]))
+- LSTM Models: These were found to capture temporal dependencies effectively with moderate complexity.
+
+- CNN-LSTM Hybrid Models: These were found to combine spatial and temporal learning for improved accuracy in complex data.
+
+- The ARIMA Model is fast to train and easy to interpret.
+]
+
+#empty("EMPTY")
 
 ==== Cons
+#[#set list(indent:  10pt,marker: ([•]))
+- LSTM Models: Lacks spatial awareness, limiting prediction accuracy compared to hybrid models.
 
-• LSTM Models: Lacks spatial awareness, limiting prediction accuracy compared to hybrid models.
+- CNN-LSTM Hybrid Models: These are computationally expensive and harder to interpret.
 
-• CNN-LSTM Hybrid Models: These are computationally expensive and harder to interpret.
-
-• The ARIMA Model was found to perform poorly for complex, nonlinear and disrupted data.
+- The ARIMA Model was found to perform poorly for complex, nonlinear and disrupted data.
+]
 
 === Using graph structural information about flows to enhance short-term demand prediction in bike-sharing systems @YANG2020101521
 
 This paper investigates how graph theory can enhance short-term bike-sharing demand forecasting. It focuses on incorporating graph-based features derived from flow interactions such as Out￾strength, In-strength, Out-degree, In-degree, and PageRank to improve prediction accuracy. It compares three machine learning models: XGBoost, Multi-Layer Perceptron (MLP), and LSTM. This study found that including graph-based features significantly improves model performance compared to using traditional features like meteorological data alone. The authors here find that the XGBoost, MLP and LSTM model achieve MAPE values of 27.2%, 27.7%, and 27.0% as well as RMSE values of 6.78, 6.85, and 6.69 correspondingly. The LSTM model was here found to be the most effective model for incorporating complex graph-based features, while the overall performance of the XGBoost is nearly comparable.
 
 ==== Pros
+#[#set list(indent:  10pt,marker: ([•]))
+- XGBoost excels at handling structured data and provides good performance with less tuning.
 
-• XGBoost excels at handling structured data and provides good performance with less tuning.
+- The MLP architecture is simple and efficient with moderate performance.
 
-• The MLP architecture is simple and efficient with moderate performance.
+- The LSTM is best at capturing temporal dependencies and sequential patterns, especially with time-lagged data.
+]
 
-• The LSTM is best at capturing temporal dependencies and sequential patterns, especially with time-lagged data.
+#empty("EMPTY")
 
 ==== Cons
+#[#set list(indent:  10pt,marker: ([•]))
+- The XGBoost is less effective at handling complex time dependencies compared to the LSTM.
 
-• The XGBoost is less effective at handling complex time dependencies compared to the LSTM.
+- The MLP struggles with sequential data and lacks the advanced handling of time dependencies.
 
-• The MLP struggles with sequential data and lacks the advanced handling of time dependencies.
-
-• The LSTM is complex to train and requires significant computational resources.
+- The LSTM is complex to train and requires significant computational resources.
+]
 
 === Modeling bike-sharing demand using a regression model with spatially varying coefficients @WANG2021103059
 
 This article focuses on investigating how various factors such as land use, socio-demographic attributes, and transportation infrastructure influence bike-sharing demand at different stations. Notably, they define a graph model, where the data for each bike-sharing cluster is accumulated according to its catchment region. The catchment region is calculated using Thiessen polygons, and ensured to be non-overlapping. The authors propose a spatially varying coefficients (SVC) regression model that accounts for local spatial effects, unlike previous regression models that assume the factors are spatially homogeneous.
 
 ==== Pros
+#[#set list(indent:  10pt,marker: ([•]))
+- The graph model includes connectivity between station clusters to be used.
 
-• The graph model includes connectivity between station clusters to be used.
+- The more sophisticated modeling of station clusters defined by catchment areas instead of single stations notably allows to predict demand in regions where no stations are present and thus allows planning.
+]
 
-• The more sophisticated modeling of station clusters defined by catchment areas instead of single stations notably allows to predict demand in regions where no stations are present and thus allows planning.
+#empty("EMPTY")
 
 ==== Cons
 
-• As the model does not directly regress on immediate historical data as e.g. the LSTM models, it fundamentally does not to allow accurate future predictions, but instead better fits general analysis purposes.
+#[#set list(indent:  10pt,marker: ([•]))
+- As the model does not directly regress on immediate historical data as e.g. the LSTM models, it fundamentally does not to allow accurate future predictions, but instead better fits general analysis purposes.
+]
 
 === Modeling Bike Availability in a Bike-Sharing System Using Machine Learning @Ashqar2017
 
@@ -110,39 +127,48 @@ This paper explores predicting bike availability at San Francisco Bay Area Bike 
 
 ==== Pros
 
-• The RF model is highly accurate with low prediction error and robust to overfitting.
+#[#set list(indent:  10pt,marker: ([•]))
+- The RF model is highly accurate with low prediction error and robust to overfitting.
 
-• The LSBoost model is effective for regression tasks with manageable computational complexity.
+- The LSBoost model is effective for regression tasks with manageable computational complexity.
 
-• The PLSR captures spatial correlations, useful for large networks with interdependent stations.
+- The PLSR captures spatial correlations, useful for large networks with interdependent stations.
+]
+
+#empty("EMPTY")
 
 ==== Cons
+#[#set list(indent:  10pt,marker: ([•]))
+- RF: Requires independent observations. Performance decreases as prediction horizon increases.
 
-• RF: Requires independent observations. Performance decreases as prediction horizon increases.
+- LSBoost: Higher prediction error. Requires proper regularization against overfitting.
 
-• LSBoost: Higher prediction error. Requires proper regularization against overfitting.
-
-• PLSR: Yields the highest prediction error. Less accurate for smaller networks.
-
+- PLSR: Yields the highest prediction error. Less accurate for smaller networks.
+]
 === Cross-Mode Knowledge Adaptation for Bike Sharing Demand Prediction Using DomainAdversarial Graph Neural Networks @Liang2024
 
 This recent paper focuses on improving the state of the art in bike sharing demand prediction by integrating additional features from other transport modes, here subway and ride-hailing traffic data, all from New York City. In order to integrate this heterogeneous graph structured data, recurrent CNNs are combined with graph convolutions to yield transport embeddings. The paper also introduces an adversarial training principle to learn these embeddings, such that the embeddings learned are optimized to be indistinguishable. These embeddings are then fed into a multiple GNNs, combined into a single representation, and passed to a final prediction layer.
 
 ==== Pros
+#[#set list(indent:  10pt,marker: ([•]))
+- The architecture developed seems to give a significant improvement to the compared approaches. However, the dataset itself is one of the most often used in bike-share prediction @YANG2020101521, allowing some degree of comparison of results.
 
-• The architecture developed seems to give a significant improvement to the compared approaches. However, the dataset itself is one of the most often used in bike-share prediction @YANG2020101521, allowing some degree of comparison of results.
+- The architecture allows extension to integrate very heterogeneous other modes of transportation significant to bike-sharing that would otherwise be very difficult to integrate.
+]
 
-• The architecture allows extension to integrate very heterogeneous other modes of transportation significant to bike-sharing that would otherwise be very difficult to integrate.
+#empty("EMPTY")
 
 ==== Cons
 
-• The architecture and total approach is complicated, requiring extensive effort to adapt to different formats of data from other systems.
+#[#set list(indent:  10pt,marker: ([•]))
+- The architecture and total approach is complicated, requiring extensive effort to adapt to different formats of data from other systems.
 
-• The data, especially from ride-hailing, is likely more noisy than the bike-sharing trip data (due to e.g. only several providers contributing to the ride-hailing data, and the different companies providing data using their own standards)
+- The data, especially from ride-hailing, is likely more noisy than the bike-sharing trip data (due to e.g. only several providers contributing to the ride-hailing data, and the different companies providing data using their own standards)
 
-• It is unclear how much improvement the architecture would give without the additional features.
+- It is unclear how much improvement the architecture would give without the additional features.
 
-• Due to the station structure used for the graph, the model cannot predict demand for only places themselves.
+- Due to the station structure used for the graph, the model cannot predict demand for only places themselves.
+]
 
 == Taxonomic Table and Tabular Comparison
 
@@ -151,7 +177,7 @@ We organize the used models into a tree based on the dominant design features fo
 
 #figure(
   caption: [A classification tree of the employed ML approaches],
-  image("MethodTree.png", width: 100%)
+  image("MethodTree.png", width: 90%, height: 33%)
 )<tab:MethodTree>
 
 We summarize the main advantages and disadvantages in the following table. We classify how well each approach integrates spatial, recent historical and connectivity information. For example, the pure LSTM approach handles and generalizes recent historical information well, while the regression does not have explicit integration of these features, it only incorporates historical information via engineered features.
@@ -199,9 +225,11 @@ Our goal is to predict the demand of bicycle sharing using a machine learning ap
  
 We consider a bicycle sharing system consisting of $N_S$ stations with fixed capacities $"Cap"_s$, i.e. a maximum of $"Cap"_s$ bicycles can be docked at station $𝑠 ∈ ℕ$. We denote the current number of bicycles at station $𝑠$ by $𝐵_𝑠 (𝑡)$ We distinguish two types of demands:
 
-• $"OutDem"_𝑠 (𝑡)$: the number of bicycles that people take out the dock at (𝑡, 𝑠) if there are enough bicycles present.
+#[#set list(indent:  0pt,marker: ([•]))
+- $"OutDem"_𝑠 (𝑡)$: the number of bicycles that people take out the dock at (𝑡, 𝑠) if there are enough bicycles present.
 
-• $"InDem"_𝑠 (𝑡)$ : the number of bicycles that people dock at (𝑡, 𝑠) if there is be enough space present.
+- $"InDem"_𝑠 (𝑡)$ : the number of bicycles that people dock at (𝑡, 𝑠) if there is be enough space present.
+]
 
 In order for the number of bicycles to be conserved, a pair of suitable demand functions has to satisfy
 
@@ -217,9 +245,11 @@ $ 𝐵_𝑠 (𝑡 + 1) = 𝐵_𝑠 (𝑡) + min("InDem"_𝑠 (𝑡), "Cap"_𝑠 
 
 In order to formulate a proper machine learning problem, we now approximate the discrete quantities by real numbers, i.e. we introduce
 
-• the hourly rates of In-Demand $"ID"_𝑠 (𝑡)∈ℝ$ and out demand $"OD"_𝑠 (𝑡)∈ℝ$
+#[#set list(indent: 0pt,marker: ([•]))
+- the hourly rates of In-Demand $"ID"_𝑠 (𝑡)∈ℝ$ and out demand $"OD"_𝑠 (𝑡)∈ℝ$
 
-• the actual hourly rates of bicycles docked $"In" ∈ ℝ$ and bicycles taken out $"Out" ∈ ℝ$.
+- the actual hourly rates of bicycles docked $"In" ∈ ℝ$ and bicycles taken out $"Out" ∈ ℝ$.
+]
 
 Our given given data consists of a list of all rides including start, end stations and start and and times in minutes. The discrete behavior previously stated now translates to the partially continuous loss
 
@@ -237,10 +267,8 @@ i.e. the demands should normally be identically to the rates of the bicycles tak
 
 == Modeling
 
-#set list(indent:  0pt,marker: ([•],[--]))
-
 Modeling factors:
-
+#[#set list(indent: 0pt,marker: ([•]))
 - Controllable Parameters: These include the sharpness of the hourly rate approximation, which depends on the window. Choosing a large window to compute the rates leads to loss of precision in the time domain, while too small window might not capture the continuity of the demand well. Other control parameters of the historic data collection include the accuracy of time resolution which in the given dataset is minutes.
 
 - Signals (i.e. input features): To predict the future hourly demand, we input
@@ -260,6 +288,7 @@ Modeling factors:
  -- Capacity changes of the stations during the month, which appears due to e.g. repositioning of stationing.These changes are not included in the published data.
 
  -- Population density changes, irregular road and facility closures which are not present in the training data but have a significant influence on bicycle sharing behavior.
+]
 
 = Proposed Solution
 //: describe the bio-inspired algorithms selected to solve the project problem.
