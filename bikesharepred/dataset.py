@@ -79,7 +79,7 @@ class BikeGraphDataset(InMemoryDataset):
     @property
     def processed_file_names(self):
         data_dir = self.cfg.data_dir
-        return [str(data_dir / f'in_out_pred_{self.cfg.year}_{self.cfg.month}_{self.cfg.name}.pt')]
+        return [str(data_dir / f'in_out_pred_{self.cfg.year}_{self.cfg.month}_{round(self.cfg.σ)}{self.cfg.data_id}.pt')]
 
     def process(self):
         cfg = self.cfg

@@ -71,6 +71,7 @@ class Config:
             'year': '2024',
             'σ': 2.5, # gaussian filter sigma for calculating in and out rates
             'N_stations': None, # load all
+            'data_id': 'default', # data id allows reloading the same data for different trials
 
             # ----------- data processing parameters ------------
             'subsample_minutes': 5, # subsample data to 5 minute intervals
