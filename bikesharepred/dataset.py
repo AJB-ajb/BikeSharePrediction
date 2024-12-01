@@ -83,10 +83,10 @@ class BikeGraphDataset(InMemoryDataset):
 
     def process(self):
         cfg = self.cfg
-        self.data = an.BikeShareData.load(month=cfg['month'], year=cfg['year'], force_reprocess=cfg['reload_bike_data'], σ = cfg['σ'])
+        self.bike_data = an.BikeShareData.load(month=cfg['month'], year=cfg['year'], force_reprocess=cfg['reload_bike_data'], σ = cfg['σ'])
         # remove stations with missing lat/lon
         # after having eliminated ghost stations (missing lat/lon), we have a new sequential index
-        stations = self.data.stations[~(self.data.stations['lat'].isna() | self.data.stations['lon'].isna())]
+        stations = self.bike_data.stations[~(self.bike_data.stations['lat'].isna() | self.bike_data.stations['lon'].isna())]
         if self.cfg.N_stations is not None:
             stations = stations.iloc[:self.cfg.N_stations]
         else:
@@ -97,15 +97,15 @@ class BikeGraphDataset(InMemoryDataset):
         stations = stations.reset_index(drop=True)
 
         # eliminate ghost stations and subsample every supsample mins
-        in_rates = self.data.in_rates[new2old_idx, ::self.cfg['subsample_minutes']]
-        out_rates = self.data.out_rates[new2old_idx, ::self.cfg['subsample_minutes']] 
+        in_rates = self.bike_data.in_rates[new2old_idx, ::self.cfg['subsample_minutes']]
+        out_rates = self.bike_data.out_rates[new2old_idx, ::self.cfg['subsample_minutes']] 
         N_stations, N_times = in_rates.shape
 
 
         inout_rates = np.concatenate((in_rates[..., None], out_rates[..., None]), axis = 2) # (N_stations × N_times × 2)
 
-        at_min_mask = self.data.at_min_mask[new2old_idx, ::self.cfg['subsample_minutes']]
-        at_max_mask = self.data.at_max_mask[new2old_idx, ::self.cfg['subsample_minutes']]
+        at_min_mask = self.bike_data.at_min_mask[new2old_idx, ::self.cfg['subsample_minutes']]
+        at_max_mask = self.bike_data.at_max_mask[new2old_idx, ::self.cfg['subsample_minutes']]
         # at_max_mask applies to in_rates, at_min_mask applies to out_rates
         mask = np.concatenate([at_max_mask[..., None], at_min_mask[..., None]], axis = 2) # (N_stations × N_times × 2)
 
@@ -147,8 +147,8 @@ class BikeGraphDataset(InMemoryDataset):
             graphdata = geomdata.Data(x = torch.tensor(x), y = torch.tensor(y), edge_index = torch.tensor(edge_list), edge_attr = torch.tensor(edge_attr), y_mask = torch.tensor(y_mask), time_features = torch.tensor(time_features, dtype = torch.float32))
 
             seqs.append(graphdata)
-        self.data, self.slices = geomdata.InMemoryDataset.collate(seqs)
-        torch.save((self.data, self.slices, N_stations, self.μ, self.σ, new2old_idx), self.processed_paths[0])
+        self._data, self.slices = geomdata.InMemoryDataset.collate(seqs)
+        torch.save((self._data, self.slices, N_stations, self.μ, self.σ, new2old_idx), self.processed_paths[0])
 
     def get_day_splits(self, train_frac = 21 / 30, val_frac = 3 / 30, shuffle = True):
         """
