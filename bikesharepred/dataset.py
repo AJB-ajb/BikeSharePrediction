@@ -56,6 +56,8 @@ class BikeGraphDataset(InMemoryDataset):
         super().__init__(root, transform = None, pre_transform = None)
         warnings.filterwarnings("ignore", category=torch.serialization.SourceChangeWarning)
         self._data, self.slices, self.N_stations, self.μ, self.σ, self.new2oldidx = torch.load(self.processed_paths[0])
+        self.cfg.N_stations = self.N_stations
+        self.cfg._calculate_dependent_params()
 
     def adjacency_matrix(self, stations, min_stations_connected = 3, max_dst_meters = 500):
         adj = np.zeros((len(stations), len(stations)))
@@ -81,7 +83,7 @@ class BikeGraphDataset(InMemoryDataset):
 
     def process(self):
         cfg = self.cfg
-        self.data = an.BikeShareData.load(month=cfg['month'], year=cfg['year'], force_reprocess=cfg['reload_bike_data'])
+        self.data = an.BikeShareData.load(month=cfg['month'], year=cfg['year'], force_reprocess=cfg['reload_bike_data'], σ = cfg['σ'])
         # remove stations with missing lat/lon
         # after having eliminated ghost stations (missing lat/lon), we have a new sequential index
         stations = self.data.stations[~(self.data.stations['lat'].isna() | self.data.stations['lon'].isna())]

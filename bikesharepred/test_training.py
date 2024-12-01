@@ -21,8 +21,13 @@ if __name__ == '__main__':
 
     TEST_linear = True
     if TEST_linear:
-        cfg = Config.overfit_config()
+        cfg = Config.default_config()
+        cfg.σ = 60
         cfg.model = 'LinearModel'
+        # clear gc because fitting the linear model on the whole dataset at once is memory intensive
+        import gc
+        gc.collect()
+        
         trainer.fit_and_evaluate(cfg)
 
         os._exit(0)

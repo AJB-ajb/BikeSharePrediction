@@ -42,7 +42,7 @@ class BikeShareData:
     def __init__(self, name):
         self.name = name
     @staticmethod
-    def load(month = '02', year = '2024', force_reprocess = False):
+    def load(month = '02', year = '2024', force_reprocess = False, σ = 2.5):
         file_end = f'{year}-{month}'
         processed_path = PROCESSED_DIR / f'{file_end}.pkl'
 
@@ -56,17 +56,17 @@ class BikeShareData:
             month_file = raw_data_files[0]
 
             ridership_table = pd.read_csv(month_file, encoding='cp1252')
-            data.process_data(ridership_table)
+            data.process_data(ridership_table, σ = σ)
             pickle.dump(data, open(processed_path, 'wb'))
             
         return pickle.load(open(processed_path, 'rb'))
 
 
-    def process_data(self, ridership_table):
+    def process_data(self, ridership_table, σ = 2.5):
         self.load_current_stations()
         ridership_table = preprocess_ridership_table(ridership_table)
         self.process_data_by_minute(ridership_table)
-        self.calculate_in_out_rates()
+        self.calculate_in_out_rates(σ = σ)
         self.calc_mask()
         return ridership_table
 
@@ -120,7 +120,7 @@ class BikeShareData:
 
         return in_bikes, out_bikes
     
-    def calculate_in_out_rates(self, σ_minutes = 15):
+    def calculate_in_out_rates(self, σ_minutes = 5):
         """
             Calculate the average number of bikes taken out per minute for each station at each minute by using
             a moving gaussian average.

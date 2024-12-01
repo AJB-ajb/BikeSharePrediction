@@ -31,11 +31,16 @@ class PathEncoder(json.JSONEncoder):
 class Config:
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
-        self.base_dir = Path(__file__).resolve().parents[1]
-        self.data_dir = self.base_dir / 'data'
-        self.processed_dir = self.data_dir / 'processed'
-        self.model_dir = self.base_dir / 'models' 
-        self.log_base_dir = self.base_dir / 'logs'
+        if 'base_dir' not in self.__dict__:
+            self.base_dir = Path(__file__).resolve().parents[1]
+        if 'data_dir' not in self.__dict__:
+            self.data_dir = self.base_dir / 'data'
+        if 'processed_dir' not in self.__dict__:
+            self.processed_dir = self.data_dir / 'processed'
+        if 'model_dir' not in self.__dict__:
+            self.model_dir = self.base_dir / 'models' 
+        if 'log_base_dir' not in self.__dict__:
+            self.log_base_dir = self.base_dir / 'logs'
 
         for dir in [self.data_dir, self.processed_dir, self.model_dir, self.log_base_dir]:
             dir.mkdir(exist_ok=True)
@@ -64,6 +69,7 @@ class Config:
             'name' : 'default',
             'month': '05',
             'year': '2024',
+            'σ': 2.5, # gaussian filter sigma for calculating in and out rates
             'N_stations': None, # load all
 
             # ----------- data processing parameters ------------

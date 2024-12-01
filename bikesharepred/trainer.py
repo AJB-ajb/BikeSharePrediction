@@ -151,6 +151,7 @@ def fit_and_evaluate(cfg):
 def model_train(train_dataset, val_dataset, test_dataset, cfg):
     device = th.device('cuda' if th.cuda.is_available() else 'cpu')
     model = STGAT(N_nodes = cfg['N_stations'], cfg = cfg, **cfg.__dict__).to(device)
+    model = model.compile()
 
     print("Model size in MB:", sum(p.numel() for p in model.parameters()) * 4 / 1024 / 1024)
 
@@ -248,8 +249,8 @@ def plot_station_over_time(y_rate_preds, y_demand_preds, y_truths, i_station, cf
     y_demand_predsin_station = y_demand_preds_reshaped[:, i_station, 0]
 
     plt.plot(y_truth_in_station[times], label='True Rate')
-    plt.plot(y_pred_in_station[times], label='Prediction')
-    plt.plot(y_demand_predsin_station[times], label='Demand Prediction')
+    plt.plot(y_pred_in_station[times], label='Prediction', marker = 'o')
+    plt.plot(y_demand_predsin_station[times], label='Demand Prediction', marker = 'x')
     plt.legend()
     plt.gca().set(title='Station {}'.format(i_station), xlabel='time [hours]', ylabel='Bike In-Rate')
     plt.xticks(times[::12], times[::12] * cfg['subsample_minutes'] // 60)
