@@ -66,7 +66,7 @@ class BikeShareData:
         self.load_current_stations()
         ridership_table = preprocess_ridership_table(ridership_table)
         self.process_data_by_minute(ridership_table)
-        self.calculate_in_out_rates(σ = σ)
+        self.calculate_in_out_rates(σ_minutes = σ)
         self.calc_mask()
         return ridership_table
 
@@ -120,7 +120,7 @@ class BikeShareData:
 
         return in_bikes, out_bikes
     
-    def calculate_in_out_rates(self, σ_minutes = 5):
+    def calculate_in_out_rates(self, σ_minutes = 2.5):
         """
             Calculate the average number of bikes taken out per minute for each station at each minute by using
             a moving gaussian average.
