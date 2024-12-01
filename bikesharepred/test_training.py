@@ -19,7 +19,7 @@ if __name__ == '__main__':
     np.random.seed(42)
     th.manual_seed(42)
 
-    TEST_linear = True
+    TEST_linear = False
     if TEST_linear:
         cfg = Config.default_config()
         cfg.σ = 60
@@ -27,7 +27,7 @@ if __name__ == '__main__':
         # clear gc because fitting the linear model on the whole dataset at once is memory intensive
         import gc
         gc.collect()
-        
+
         trainer.fit_and_evaluate(cfg)
 
         os._exit(0)
@@ -57,7 +57,7 @@ if __name__ == '__main__':
             break
         print("Forward and backward passes work ✔")
 
-    overfit = True
+    overfit = False
     if overfit:
         cfg = Config.overfit_config()
         cfg.final_module = 'lstm'
@@ -69,7 +69,7 @@ if __name__ == '__main__':
         train, val, test = dataset.get_day_splits(train_frac=0.7, val_frac=0.15)
         model = model_train(train, val, test, cfg)
 
-    default = False
+    default = True
     if default:
         cfg = Config.default_config()
         # cfg.reload_bike_data = True

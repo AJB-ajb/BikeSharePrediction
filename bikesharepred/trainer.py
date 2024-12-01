@@ -151,7 +151,7 @@ def fit_and_evaluate(cfg):
 def model_train(train_dataset, val_dataset, test_dataset, cfg):
     device = th.device('cuda' if th.cuda.is_available() else 'cpu')
     model = STGAT(N_nodes = cfg['N_stations'], cfg = cfg, **cfg.__dict__).to(device)
-    model = model.compile()
+    model.compile()
 
     print("Model size in MB:", sum(p.numel() for p in model.parameters()) * 4 / 1024 / 1024)
 
