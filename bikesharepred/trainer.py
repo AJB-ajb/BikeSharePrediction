@@ -157,9 +157,8 @@ def model_train(train_dataset, val_dataset, test_dataset, cfg):
 
     optimizer = instantiate_optimizer(model, cfg)
     writer = SummaryWriter(log_dir=cfg['log_dir'], comment=cfg['name'])
-
+    
     # log the configuration as hyperparameters to tensorboard
-    cfg.log(writer)
 
     train_dataloader = geomloader.DataLoader(train_dataset, batch_size=cfg['batch_size'], shuffle=True)
     val_dataloader = geomloader.DataLoader(val_dataset, batch_size=cfg['batch_size'], shuffle=False)
@@ -205,14 +204,16 @@ def model_train(train_dataset, val_dataset, test_dataset, cfg):
             th.save(model.state_dict(), cfg.model_path(epoch))
         writer.flush()
 
-    writer.add_hparams({}, metric_dict={'final_eval_loss': evals_dict['Loss'], 'final_eval_RMSE': evals_dict['RMSE'], 'final_eval_MAE': evals_dict['MAE'], 'min_val_loss': min(val_losses), 'min_val_mse': min(val_mses)})
-
     test_metrics, test_metrics_dict, y_rate_preds, y_demand_preds, y_truths = eval(model, test_dataset, test_dataloader, cfg)
     scalars = {key: val.item() for key, val in test_metrics_dict.items() if val.dim() == 0}
     metrics_str = ', '.join([f"{key}: {val:.5e}" for key, val in scalars.items()])
     
     print(f"Final test metrics: {metrics_str}")
-    writer.add_hparams({}, metric_dict={'final_test_Loss': test_metrics_dict['Loss'], 'final_test_RMSE': test_metrics_dict['RMSE'], 'final_test_MAE': test_metrics_dict['MAE']})
+    
+    hparam_dict = {key: val for key, val in cfg.__dict__.items() if isinstance(val, (int, float, str))}
+    hparam_dict.update(cfg['optimizer_params'])
+    writer.add_hparams(hparam_dict=hparam_dict, metric_dict=
+                       {'final_test_Loss': test_metrics_dict['Loss'], 'final_test_RMSE': test_metrics_dict['RMSE'], 'final_test_MAE': test_metrics_dict['MAE'], 'final_eval_loss': evals_dict['Loss'], 'final_eval_RMSE': evals_dict['RMSE'], 'final_eval_MAE': evals_dict['MAE'], 'min_val_loss': min(val_losses), 'min_val_mse': min(val_mses)})
 
     # calculate minimum validation mse and minimum validation loss
     
