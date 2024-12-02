@@ -54,12 +54,11 @@ class BikeGraphDataset(InMemoryDataset):
         self.cfg = config
         root = self.cfg.processed_dir # store the graph dataset - processed data also in the processed directory, along with the bike data
         super().__init__(root, transform = None, pre_transform = None)
-        warnings.filterwarnings("ignore", category=torch.serialization.SourceChangeWarning)
         self._data, self.slices, self.N_stations, self.μ, self.σ, self.new2oldidx = torch.load(self.processed_paths[0])
         self.cfg.N_stations = self.N_stations
         self.cfg._calculate_dependent_params()
 
-    def adjacency_matrix(self, stations, min_stations_connected = 3, max_dst_meters = 500):
+    def adjacency_matrix(self, stations, min_stations_connected, max_dst_meters):
         adj = np.zeros((len(stations), len(stations)))
         lats, lons = np.array(stations['lat']), np.array(stations['lon'])
         dst_matrix = np.zeros_like(adj, dtype=np.float32)
@@ -115,7 +114,7 @@ class BikeGraphDataset(InMemoryDataset):
         N_history = self.cfg['N_history']
         n_window = self.cfg['N_predictions'] + self.cfg['N_history']
         
-        adj_matrix = self.adjacency_matrix(stations)
+        adj_matrix = self.adjacency_matrix(stations, min_stations_connected = self.cfg['min_stations_connected'], max_dst_meters = self.cfg['max_dst_meters'])
         edge_list = edge_list_from_matrix(adj_matrix) # (2 × N_edges), "edge_index" in PyG
         edge_attr = np.ones(edge_list.shape[1], dtype=np.float32) # edge features are all 1 for the GAT version
 

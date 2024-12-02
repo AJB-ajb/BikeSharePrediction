@@ -78,12 +78,14 @@ class Config:
             'N_history': 12, # take 12 subsampled data points as history
             'N_predictions': 9, # predict the following 9 data points
             'min_stations_connected': 2,
+            'max_dst_meters': 500, # maximum distance between stations to be considered connected in the GCN graph
             'use_time_features': True, # use explicit embeddings of day of week and time of day
             # ----------- hyperparameters ------------
             # ----------- model parameters ------------
             'batch_size': 32,
             'dropout': 0.1,
             'gat_heads': 8,
+            'num_gat_layers': 1,
             'lstm_params': {
                 'lstm1_hidden_size': 32,
                 'lstm2_hidden_size': 128

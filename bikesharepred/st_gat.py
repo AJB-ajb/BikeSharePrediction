@@ -19,7 +19,12 @@ class STGAT(nn.Module):
         super(STGAT, self).__init__()
 
         self.dropout = nn.Dropout(p = dropout)
-        self.gat = geomnn.GATConv(in_channels= in_features_per_node, out_channels= in_features_per_node, heads = gat_heads, dropout = 0, concat = False)
+
+        self.gat_layers = nn.ModuleList()
+        for gat_layer_idx in range(cfg.num_gat_layers):
+            gat = geomnn.GATConv(in_channels= in_features_per_node, out_channels= in_features_per_node, heads = gat_heads, dropout = 0, concat = False)
+            self.gat_layers.append(gat)
+
 
         # number of features per node per time step in the input data
         self.N_features = in_features_per_node // N_history
@@ -63,10 +68,10 @@ class STGAT(nn.Module):
         N_nodes = batch.num_nodes // batch_size 
         seq_length = self.cfg.N_history
 
+        for gat_layer in self.gat_layers:
         # x should be [batch_size * N_nodes × N_history * features]
-        x = self.gat(x, edge_index) # -> batch_size * N_nodes × (N_history * N_Features) (i.e. in total N_nodes… × Features…)
+            x = gat_layer(x, edge_index) # -> batch_size * N_nodes × (N_history * N_Features) (i.e. in total N_nodes… × Features…)
         x = self.dropout(x) 
-
 
         # for lstm, the sequence length must be the first dimension, i.e. swap and expand
         x = th.reshape(x, (batch_size, N_nodes, seq_length, self.N_features))
