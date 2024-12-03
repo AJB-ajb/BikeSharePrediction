@@ -202,7 +202,6 @@ def model_train(train_dataset, val_dataset, test_dataset, cfg):
             writer.add_figure(f'Station {station_id}', _plot, global_step=epoch)
         if epoch % cfg['save_interval'] == 0 or epoch == cfg['epochs'] - 1:
             th.save(model.state_dict(), cfg.model_path(epoch))
-        writer.flush()
 
     test_metrics, test_metrics_dict, y_rate_preds, y_demand_preds, y_truths = eval(model, test_dataset, test_dataloader, cfg)
     scalars = {key: val.item() for key, val in test_metrics_dict.items() if val.dim() == 0}

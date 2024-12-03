@@ -57,10 +57,10 @@ if __name__ == '__main__':
             break
         print("Forward and backward passes work ✔")
 
-    overfit = False
+    overfit = True
     if overfit:
         cfg = Config.overfit_config()
-        cfg.final_module = 'lstm'
+        cfg['final_module'] = 'lstm'
         cfg.optimizer_params['lr'] = 5e-4
         dataset = BikeGraphDataset(cfg)
         dataset.process()

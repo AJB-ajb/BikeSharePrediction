@@ -53,6 +53,11 @@ class Config:
         self.__dict__[name] = value
     def update(self, new_dict: dict) -> None:
         self.__dict__.update(new_dict)
+
+    def __setitem__(self, name: str, value) -> None:
+        if not name in self.__dict__.keys():
+            raise KeyError(f'Setting unavailable key {name}. Use update() or "." operator instead to add new keys')
+        self.__dict__[name] = value
     
     def model_path(self, epoch):
         return self.model_dir / f'{self.name}_{epoch}.pth'
@@ -113,6 +118,15 @@ class Config:
         cfg._calculate_dependent_params()
         # dependent parameters
         return cfg
+    
+    @staticmethod
+    def valid_keys():
+        if not hasattr(Config, '_valid_keys'):
+            def_config = Config.default_config()
+            def_config._calculate_dependent_params()
+            
+            Config._valid_keys.update(def_config.__dict__.keys())
+            
 
     def _calculate_dependent_params(self):
         # calculate dependent parameters
