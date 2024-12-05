@@ -75,8 +75,8 @@ class Config:
             'name' : 'default',
             'month': '05',
             'year': '2024',
-            'width_mins': 20, # gaussian filter sigma or average width for calculating in and out rates
-            'filter': 'average', # 'average' or 'gaussian'
+            'width_mins': 10, # gaussian filter sigma or average width for calculating in and out rates
+            'filter': 'gaussian', # 'average' or 'gaussian'
             'N_stations': None, # load all
             'data_id': 'default', # data id allows reloading the same data for different trials
 

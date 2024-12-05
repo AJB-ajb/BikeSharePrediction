@@ -168,9 +168,9 @@ def model_train(train_dataset, val_dataset, test_dataset, cfg):
 
     iteration = 0
     while iteration < cfg['max_iterations']:
-        model.train()
         train_losses_epoch = 0
         for batch in train_dataloader:
+            model.train()
             optimizer.zero_grad()
             y_pred = model.forward(batch.to(device)).view(batch.y.shape[0], cfg.N_predictions, 4)
             # get the rate and demand predictions
@@ -183,13 +183,14 @@ def model_train(train_dataset, val_dataset, test_dataset, cfg):
             loss.backward()
             optimizer.step()
             train_losses_epoch += loss.item()
-            iteration += 1
+            
             if iteration % cfg['eval_interval'] == 0 or iteration == cfg['max_iterations'] - 1:
+                model.eval()
                 evals_list, evals_dict, y_rate_preds, y_demand_preds, y_truths = eval(model, val_dataset, val_dataloader, cfg)
                 scalars = {key: val.item() for key, val in evals_dict.items() if val.dim() == 0}
                 metrics_str = ', '.join([f"{key}: {val:.5e}" for key, val in scalars.items()])
                 
-                print(f"Ep{epoch} train:{train_losses_epoch / len(train_dataloader)} val: {metrics_str}")
+                print(f"Iter {iteration} train:{train_losses_epoch / len(train_dataloader)} val: {metrics_str}")
 
                 mse_per_future_step = evals_dict.pop('MSE per step')
                 for i, mse in enumerate(mse_per_future_step):
@@ -205,6 +206,8 @@ def model_train(train_dataset, val_dataset, test_dataset, cfg):
                 writer.add_figure(f'Station {station_id}', _plot, global_step=iteration)
             if iteration % cfg['save_interval'] == 0 or iteration == cfg['max_iterations'] - 1:
                 th.save(model.state_dict(), cfg.model_path(iteration))
+                
+            iteration += 1
 
     test_metrics, test_metrics_dict, y_rate_preds, y_demand_preds, y_truths = eval(model, test_dataset, test_dataloader, cfg)
     scalars = {key: val.item() for key, val in test_metrics_dict.items() if val.dim() == 0}
