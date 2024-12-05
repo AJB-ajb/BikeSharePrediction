@@ -4,3 +4,13 @@ __pycache__/
 *.html
 *.gif
 *.png
+*.zip
+*.tmp
+/configs/
+???/processed/
+runs/
+/processed
+/documents/notes
+/logs
+/models
+/raw
