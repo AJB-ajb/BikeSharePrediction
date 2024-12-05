@@ -76,7 +76,7 @@ if __name__ == '__main__':
     default = True
     if default:
         cfg = Config.default_config()
-        # cfg.reload_bike_data = True
+        cfg.reload_bike_data = True
         dataset = BikeGraphDataset(cfg)
         dataset.process()
         cfg._calculate_dependent_params()

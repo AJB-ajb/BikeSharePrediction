@@ -90,22 +90,22 @@ class BikeGraphDataset(InMemoryDataset):
         if self.cfg.N_stations is not None:
             stations = stations.iloc[:self.cfg.N_stations]
         else:
-            self.cfg.N_stations = len(stations)
+            self.N_stations = self.cfg.N_stations = len(stations)
             self.cfg._calculate_dependent_params()
         # thus we have new_index < old_index
-        new2old_idx = np.array([old_idx for old_idx in stations.index])
+        self.new2old_idx = np.array([old_idx for old_idx in stations.index])
         stations = stations.reset_index(drop=True)
 
         # eliminate ghost stations and subsample every supsample mins
-        in_rates = self.bike_data.in_rates[new2old_idx, ::self.cfg['subsample_minutes']]
-        out_rates = self.bike_data.out_rates[new2old_idx, ::self.cfg['subsample_minutes']] 
+        in_rates = self.bike_data.in_rates[self.new2old_idx, ::self.cfg['subsample_minutes']]
+        out_rates = self.bike_data.out_rates[self.new2old_idx, ::self.cfg['subsample_minutes']] 
         N_stations, N_times = in_rates.shape
 
 
         inout_rates = np.concatenate((in_rates[..., None], out_rates[..., None]), axis = 2) # (N_stations × N_times × 2)
 
-        at_min_mask = self.bike_data.at_min_mask[new2old_idx, ::self.cfg['subsample_minutes']]
-        at_max_mask = self.bike_data.at_max_mask[new2old_idx, ::self.cfg['subsample_minutes']]
+        at_min_mask = self.bike_data.at_min_mask[self.new2old_idx, ::self.cfg['subsample_minutes']]
+        at_max_mask = self.bike_data.at_max_mask[self.new2old_idx, ::self.cfg['subsample_minutes']]
         # at_max_mask applies to in_rates, at_min_mask applies to out_rates
         mask = np.concatenate([at_max_mask[..., None], at_min_mask[..., None]], axis = 2) # (N_stations × N_times × 2)
 
@@ -148,7 +148,7 @@ class BikeGraphDataset(InMemoryDataset):
 
             seqs.append(graphdata)
         self._data, self.slices = geomdata.InMemoryDataset.collate(seqs)
-        torch.save((self._data, self.slices, N_stations, self.μ, self.σ, new2old_idx), self.processed_paths[0])
+        torch.save((self._data, self.slices, self.N_stations, self.μ, self.σ, self.new2old_idx), self.processed_paths[0])
 
     def get_day_splits(self, train_frac = 21 / 30, val_frac = 3 / 30, shuffle = True):
         """

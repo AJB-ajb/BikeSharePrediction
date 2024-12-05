@@ -67,9 +67,9 @@ class Config:
     # full-scale default configuration
         _dict = {
             # ----------- logging and evaluation parameters 
-            # one month of data for 5 minute intervals is roughly 8000 examples
-            'eval_interval': 5000, # in iterations 
-            'save_interval': 10,
+            # one month of data for 5 minute intervals is roughly 8000 examples, so roughly 300 it / epoch
+            'eval_interval': 1200, # in iterations 
+            'save_interval': 3000,
             'seed' : 42,
             # ----------- data parameters ------------
             'name' : 'default',
@@ -108,7 +108,7 @@ class Config:
                 'lr': 5e-4,
                 'weight_decay': 1e-5
             },
-            'max_iterations': 20000,
+            'max_iterations': 6000,
 
             'negative_penalty_factor': 0.0, # additional penalty for negative predictions
             'third_derivative_penalty' : 0.5, # penalty factor for (demand''')^2

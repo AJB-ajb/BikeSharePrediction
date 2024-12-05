@@ -43,7 +43,7 @@ class BikeShareData:
     def __init__(self, name):
         self.name = name
     @staticmethod
-    def load(month = '02', year = '2024', force_reprocess = False, width_mins = 5., filter = 'average'):
+    def load(month = '02', year = '2024', force_reprocess = False, width_mins = 5., filter = 'gaussian'):
         file_end = f'{year}-{month}'
         processed_path = PROCESSED_DIR / f'{file_end}.pkl'
 

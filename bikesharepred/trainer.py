@@ -9,7 +9,7 @@ from st_gat import STGAT
 from linear_model import LinearModel
 from dataset import BikeGraphDataset
 
-from plotting import plot_station_over_time
+import plotting
 
 def finite_diff_third_derivative(input_tensor, axis=-1, step_size=1.0):
     """
@@ -167,10 +167,14 @@ def model_train(train_dataset, val_dataset, test_dataset, cfg):
     val_mses = []
 
     iteration = 0
+    # init tqdm progress bar
+    pbar = tqdm.tqdm(total=cfg['max_iterations'])
+
     while iteration < cfg['max_iterations']:
         train_losses_epoch = 0
+        model.train()
         for batch in train_dataloader:
-            model.train()
+            # --------------- train ----------------
             optimizer.zero_grad()
             y_pred = model.forward(batch.to(device)).view(batch.y.shape[0], cfg.N_predictions, 4)
             # get the rate and demand predictions
@@ -184,7 +188,9 @@ def model_train(train_dataset, val_dataset, test_dataset, cfg):
             optimizer.step()
             train_losses_epoch += loss.item()
             
+            # --------------- evaluate ----------------
             if iteration % cfg['eval_interval'] == 0 or iteration == cfg['max_iterations'] - 1:
+
                 model.eval()
                 evals_list, evals_dict, y_rate_preds, y_demand_preds, y_truths = eval(model, val_dataset, val_dataloader, cfg)
                 scalars = {key: val.item() for key, val in evals_dict.items() if val.dim() == 0}
@@ -201,13 +207,25 @@ def model_train(train_dataset, val_dataset, test_dataset, cfg):
                 val_losses.append(evals_dict['Loss'])
                 val_mses.append(evals_dict['MSE'])
 
-                station_id = 4
-                _plot = plot_station_over_time(y_rate_preds.cpu(), y_demand_preds.cpu(), y_truths.cpu(), station_id, cfg)
-                writer.add_figure(f'Station {station_id}', _plot, global_step=iteration)
+                i_station = 4
+                _plot = plotting.plot_station_over_time(y_rate_preds.cpu(), y_demand_preds.cpu(), y_truths.cpu(), i_station, cfg)
+                writer.add_figure(f'Station {i_station}', _plot, global_step=iteration)
+
+                _plot = plotting.plot_horizon_accuracies(mse_per_future_step.cpu().numpy(), cfg)
+                writer.add_figure('Horizon accuracies', _plot, global_step=iteration)
+
+                horizon = 4
+                _plot = plotting.plot_station_over_time_reg(y_rate_preds.cpu().numpy(), y_demand_preds.cpu().numpy(), y_truths.cpu().numpy(), i_station, horizon = horizon, cfg = cfg)
+                writer.add_figure(f'Station {i_station} Regular', _plot, global_step=iteration)
+                
+                model.train()
+
+            # --------------- save model ----------------
             if iteration % cfg['save_interval'] == 0 or iteration == cfg['max_iterations'] - 1:
                 th.save(model.state_dict(), cfg.model_path(iteration))
-                
+
             iteration += 1
+            pbar.update(1)
 
     test_metrics, test_metrics_dict, y_rate_preds, y_demand_preds, y_truths = eval(model, test_dataset, test_dataloader, cfg)
     scalars = {key: val.item() for key, val in test_metrics_dict.items() if val.dim() == 0}

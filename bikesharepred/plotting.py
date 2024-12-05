@@ -29,6 +29,7 @@ def plot_station_over_time(y_rate_preds, y_demand_preds, y_truths, i_station, cf
     y_pred_in_station = y_preds_reshaped[:, i_station, 0]
     y_demand_predsin_station = y_demand_preds_reshaped[:, i_station, 0]
 
+    plt.clf()
     plt.plot(y_truth_in_station[times], label='True Rate')
     plt.plot(y_pred_in_station[times], label='Prediction', marker = 'o')
     plt.plot(y_demand_predsin_station[times], label='Demand Prediction', marker = 'x')
@@ -37,29 +38,32 @@ def plot_station_over_time(y_rate_preds, y_demand_preds, y_truths, i_station, cf
     plt.xticks(times[::12], times[::12] * cfg['subsample_minutes'] // 60)
     return plt.gcf()
 
-def plot_station_over_time_reg(y_rate_preds, y_demand_preds, y_truths, i_station, horizon, cfg, times = np.arange(0, 288)):
+def plot_station_over_time_reg(y_rate_preds, y_demand_preds, y_truths, i_station, horizon, cfg, times = np.arange(0, 288), in_rate = True):
     """
         Plot the rate predictions, demand predictions and true values for a given station over the given times. Use the `horizon` index into the future, i.e. for horizon = 0, the first prediction is used, etc.
     """
     # y_rate_preds: [num_batches_total × (batch_size * num_nodes) × (num predictions * 2)]
 
-    def extract_horizon(y):
-        N_batches = y.size(0)
-        y_squashed = y.view(N_batches * cfg.batch_size, cfg.N_stations, cfg.N_predictions, 2)
+    def extract_horizon(y : np.ndarray):
+        N_batches = y.shape[0]
+        y_squashed = y.reshape((N_batches * cfg.batch_size, cfg.      N_stations, cfg.N_predictions, 2))
         ys_future = y_squashed[times, i_station, horizon, :]
-        ys_concat = np.concatenate(ys_future, axis = 0)
-        return ys_concat
+        return ys_future
 
     y_rate_preds_reshaped = extract_horizon(y_rate_preds)
     y_demand_preds_reshaped = extract_horizon(y_demand_preds)
     y_truths_reshaped = extract_horizon(y_truths)
 
-    plt.plot(y_truths_reshaped, label='True Rate')
-    plt.plot(y_rate_preds_reshaped, label='Prediction', marker = 'o')
-    plt.plot(y_demand_preds_reshaped, label='Demand Prediction', marker = 'x')
+    last_dim_idx = 0 if in_rate else 1
+    ylabel = 'In Rate' if in_rate else 'Out Rate'
+
+    plt.clf()
+    plt.plot(y_truths_reshaped[:, last_dim_idx], label='True Rate')
+    plt.plot(y_rate_preds_reshaped[:, last_dim_idx], label='Prediction', marker = 'o')
+    plt.plot(y_demand_preds_reshaped[:, last_dim_idx], label='Demand Prediction', marker = 'x')
     plt.legend()
     horizon_minutes = horizon * cfg.subsample_minutes
-    plt.gca().set(title=f'Station {i_station} for horizon {horizon_minutes}', xlabel='time [hours]', ylabel='Bike In-Rate')
+    plt.gca().set(title=f'Station {i_station} for horizon {horizon_minutes}', xlabel='time [hours]', ylabel='Bike ' + ylabel + '[bikes/hour]')
     
     return plt.gcf()
 
@@ -68,6 +72,8 @@ def plot_horizon_accuracies(mses_per_step, cfg : Config):
     
     subsample_mins = cfg['subsample_minutes']
     minutes = np.arange(1 * subsample_mins, (len(rmses_per_step) + 1) * subsample_mins, subsample_mins)
+    
+    plt.clf()
     plt.plot(minutes, rmses_per_step)
     plt.gca().set(title='RMSE per step', xlabel='Minutes into future', ylabel='RMSE')
-    plt.show()
+    return plt.gcf()
