@@ -67,14 +67,16 @@ class Config:
     # full-scale default configuration
         _dict = {
             # ----------- logging and evaluation parameters 
-            'eval_interval': 5,
+            # one month of data for 5 minute intervals is roughly 8000 examples
+            'eval_interval': 5000, # in iterations 
             'save_interval': 10,
             'seed' : 42,
             # ----------- data parameters ------------
             'name' : 'default',
             'month': '05',
             'year': '2024',
-            'σ': 2.5, # gaussian filter sigma for calculating in and out rates
+            'width_mins': 20, # gaussian filter sigma or average width for calculating in and out rates
+            'filter': 'average', # 'average' or 'gaussian'
             'N_stations': None, # load all
             'data_id': 'default', # data id allows reloading the same data for different trials
 
@@ -106,7 +108,8 @@ class Config:
                 'lr': 5e-4,
                 'weight_decay': 1e-5
             },
-            'epochs': 60,
+            'max_iterations': 20000,
+
             'negative_penalty_factor': 0.0, # additional penalty for negative predictions
             'third_derivative_penalty' : 0.5, # penalty factor for (demand''')^2
             'final_module' : 'lstm', # 'lstm' or 'transformer'

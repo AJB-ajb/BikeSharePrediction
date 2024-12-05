@@ -8,6 +8,7 @@ import requests
 import json
 import math
 from scipy.ndimage import gaussian_filter1d
+import scipy.ndimage
 from pathlib import Path
 import pathlib
 
@@ -42,7 +43,7 @@ class BikeShareData:
     def __init__(self, name):
         self.name = name
     @staticmethod
-    def load(month = '02', year = '2024', force_reprocess = False, σ = 2.5):
+    def load(month = '02', year = '2024', force_reprocess = False, width_mins = 5., filter = 'average'):
         file_end = f'{year}-{month}'
         processed_path = PROCESSED_DIR / f'{file_end}.pkl'
 
@@ -56,17 +57,17 @@ class BikeShareData:
             month_file = raw_data_files[0]
 
             ridership_table = pd.read_csv(month_file, encoding='cp1252')
-            data.process_data(ridership_table, σ = σ)
+            data.process_data(ridership_table, width_mins = width_mins, filter = filter)
             pickle.dump(data, open(processed_path, 'wb'))
             
         return pickle.load(open(processed_path, 'rb'))
 
 
-    def process_data(self, ridership_table, σ = 2.5):
+    def process_data(self, ridership_table, width_mins, filter):
         self.load_current_stations()
         ridership_table = preprocess_ridership_table(ridership_table)
         self.process_data_by_minute(ridership_table)
-        self.calculate_in_out_rates(σ_minutes = σ)
+        self.calculate_in_out_rates(width_mins = width_mins, filter = filter)
         self.calc_mask()
         return ridership_table
 
@@ -120,10 +121,11 @@ class BikeShareData:
 
         return in_bikes, out_bikes
     
-    def calculate_in_out_rates(self, σ_minutes = 2.5):
+    def calculate_in_out_rates(self, width_mins, filter):
         """
-            Calculate the average number of bikes taken out per minute for each station at each minute by using
-            a moving gaussian average.
+            Calculate rates of bikes taken in/out in [bikes/hour] for each station at each minute by using
+            - a moving gaussian average if filter == 'gaussian', where width_mins is the standard deviation of the gaussian
+            - a moving average if filter == 'average', where width_mins is the width of the moving average in minutes
             Returns (in_rates, out_rates) where in_rates and out_rates are numpy arrays of shape (num_stations, num_minutes)
         """
 
@@ -131,9 +133,17 @@ class BikeShareData:
         in_bikes = self.in_bikes.astype(np.float32)
         out_bikes = self.out_bikes.astype(np.float32)
         
-        self.in_rates = gaussian_filter1d(in_bikes, sigma=σ_minutes, axis=1, mode='reflect')
-        self.out_rates = gaussian_filter1d(out_bikes, sigma=σ_minutes, axis=1, mode='reflect') 
-        self.σ_minutes = σ_minutes
+        self.σ_minutes = width_mins
+        if filter == 'gaussian':
+            self.in_rates = gaussian_filter1d(in_bikes, sigma=width_mins, axis=1, mode='reflect') * 60
+            self.out_rates = gaussian_filter1d(out_bikes, sigma=width_mins, axis=1, mode='reflect') * 60
+        elif filter == 'average':
+            def causal_average(x, width):
+                return scipy.ndimage.uniform_filter1d(x, size=width, axis=1, mode='reflect')
+            self.in_rates = causal_average(in_bikes, int(width_mins)) * 60
+            self.out_rates = causal_average(out_bikes, int(width_mins)) * 60
+        else:
+            raise ValueError(f'Unknown filter type {filter}')
 
         return self.in_rates, self.out_rates
 

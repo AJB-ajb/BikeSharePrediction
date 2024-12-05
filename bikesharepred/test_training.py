@@ -57,17 +57,21 @@ if __name__ == '__main__':
             break
         print("Forward and backward passes work ✔")
 
-    overfit = True
+    overfit = False
     if overfit:
+        print("Overfitting test")
         cfg = Config.overfit_config()
         cfg['final_module'] = 'lstm'
         cfg.optimizer_params['lr'] = 5e-4
+        
         dataset = BikeGraphDataset(cfg)
-        dataset.process()
+        # dataset.process()
         cfg._calculate_dependent_params()
 
         train, val, test = dataset.get_day_splits(train_frac=0.7, val_frac=0.15)
         model = model_train(train, val, test, cfg)
+
+        print("Overfitting test done")
 
     default = True
     if default:

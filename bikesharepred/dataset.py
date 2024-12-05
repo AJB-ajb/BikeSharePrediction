@@ -8,6 +8,7 @@ import torch_geometric.data as geomdata
 import analysis as an
 import tqdm
 from pathlib import Path
+from config import Config
 
 def z_score(x, mean, std):
     return (x - mean) / std
@@ -50,12 +51,12 @@ class BikeGraphDataset(InMemoryDataset):
         Dataset storing projessed bike sharing rate data for GNN training.
         Stores roughly ([InRate, OutRate]_t)_(t) as input and (InRate, OutRate)_(t0 < t) to be predicted as output.
     """
-    def __init__(self, config):
+    def __init__(self, config : Config):
         self.cfg = config
         root = self.cfg.processed_dir # store the graph dataset - processed data also in the processed directory, along with the bike data
         super().__init__(root, transform = None, pre_transform = None)
         self._data, self.slices, self.N_stations, self.μ, self.σ, self.new2oldidx = torch.load(self.processed_paths[0])
-        self.cfg.N_stations = self.N_stations
+        self.cfg['N_stations'] = self.N_stations
         self.cfg._calculate_dependent_params()
 
     def adjacency_matrix(self, stations, min_stations_connected, max_dst_meters):
@@ -78,11 +79,11 @@ class BikeGraphDataset(InMemoryDataset):
     @property
     def processed_file_names(self):
         data_dir = self.cfg.data_dir
-        return [str(data_dir / f'in_out_pred_{self.cfg.year}_{self.cfg.month}_{round(self.cfg.σ)}{self.cfg.data_id}.pt')]
+        return [str(data_dir / f'in_out_pred_{self.cfg.year}_{self.cfg.month}_{self.cfg.filter}_{round(self.cfg.width_mins)}{self.cfg.data_id}.pt')]
 
     def process(self):
         cfg = self.cfg
-        self.bike_data = an.BikeShareData.load(month=cfg['month'], year=cfg['year'], force_reprocess=cfg['reload_bike_data'], σ = cfg['σ'])
+        self.bike_data = an.BikeShareData.load(month=cfg['month'], year=cfg['year'], force_reprocess=cfg['reload_bike_data'], width_mins = cfg['width_mins'], filter = cfg['filter'])
         # remove stations with missing lat/lon
         # after having eliminated ghost stations (missing lat/lon), we have a new sequential index
         stations = self.bike_data.stations[~(self.bike_data.stations['lat'].isna() | self.bike_data.stations['lon'].isna())]

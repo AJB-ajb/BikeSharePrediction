@@ -3,15 +3,13 @@ import torch.nn as nn
 import numpy as np
 from dataset import z_score, un_z_score, RMSE, MAE, MAPE
 import tqdm
-
-
-import os
-import matplotlib.pyplot as plt
 import torch_geometric.loader as geomloader
 
 from st_gat import STGAT
 from linear_model import LinearModel
 from dataset import BikeGraphDataset
+
+from plotting import plot_station_over_time
 
 def finite_diff_third_derivative(input_tensor, axis=-1, step_size=1.0):
     """
@@ -151,6 +149,7 @@ def fit_and_evaluate(cfg):
 def model_train(train_dataset, val_dataset, test_dataset, cfg):
     device = th.device('cuda' if th.cuda.is_available() else 'cpu')
     model = STGAT(N_nodes = cfg['N_stations'], cfg = cfg, **cfg.__dict__).to(device)
+    print("Compiling model")
     model.compile()
 
     print("Model size in MB:", sum(p.numel() for p in model.parameters()) * 4 / 1024 / 1024)
@@ -167,8 +166,10 @@ def model_train(train_dataset, val_dataset, test_dataset, cfg):
     val_losses = []
     val_mses = []
 
-    for epoch in tqdm.tqdm(range(cfg['epochs'])):
+    iteration = 0
+    while iteration < cfg['max_iterations']:
         model.train()
+        train_losses_epoch = 0
         for batch in train_dataloader:
             optimizer.zero_grad()
             y_pred = model.forward(batch.to(device)).view(batch.y.shape[0], cfg.N_predictions, 4)
@@ -178,30 +179,32 @@ def model_train(train_dataset, val_dataset, test_dataset, cfg):
             
             loss = loss_fn(y_rate_pred, y_demand_pred, batch.y, batch.y_mask, cfg)
             
-            writer.add_scalar('Loss/train', loss, epoch)
+            writer.add_scalar('Loss/train', loss, iteration)
             loss.backward()
             optimizer.step()
-        if epoch % cfg['eval_interval'] == 0 or epoch == cfg['epochs'] - 1:
-            evals_list, evals_dict, y_rate_preds, y_demand_preds, y_truths = eval(model, val_dataset, val_dataloader, cfg)
-            scalars = {key: val.item() for key, val in evals_dict.items() if val.dim() == 0}
-            metrics_str = ', '.join([f"{key}: {val:.5e}" for key, val in scalars.items()])
-            
-            print(f"Epoch {epoch} val: {metrics_str}")
+            train_losses_epoch += loss.item()
+            iteration += 1
+            if iteration % cfg['eval_interval'] == 0 or iteration == cfg['max_iterations'] - 1:
+                evals_list, evals_dict, y_rate_preds, y_demand_preds, y_truths = eval(model, val_dataset, val_dataloader, cfg)
+                scalars = {key: val.item() for key, val in evals_dict.items() if val.dim() == 0}
+                metrics_str = ', '.join([f"{key}: {val:.5e}" for key, val in scalars.items()])
+                
+                print(f"Ep{epoch} train:{train_losses_epoch / len(train_dataloader)} val: {metrics_str}")
 
-            mse_per_future_step = evals_dict.pop('MSE per step')
-            for i, mse in enumerate(mse_per_future_step):
-                writer.add_scalar(f'MSE/eval/step_{i}', mse, epoch)
-            for key, value in evals_dict.items():
-                writer.add_scalar(f'{key}/eval', value, epoch)
+                mse_per_future_step = evals_dict.pop('MSE per step')
+                for i, mse in enumerate(mse_per_future_step):
+                    writer.add_scalar(f'MSE/eval/step_{i}', mse, iteration)
+                for key, value in evals_dict.items():
+                    writer.add_scalar(f'{key}/eval', value, iteration)
 
-            val_losses.append(evals_dict['Loss'])
-            val_mses.append(evals_dict['MSE'])
+                val_losses.append(evals_dict['Loss'])
+                val_mses.append(evals_dict['MSE'])
 
-            station_id = 4
-            _plot = plot_station_over_time(y_rate_preds.cpu(), y_demand_preds.cpu(), y_truths.cpu(), station_id, cfg)
-            writer.add_figure(f'Station {station_id}', _plot, global_step=epoch)
-        if epoch % cfg['save_interval'] == 0 or epoch == cfg['epochs'] - 1:
-            th.save(model.state_dict(), cfg.model_path(epoch))
+                station_id = 4
+                _plot = plot_station_over_time(y_rate_preds.cpu(), y_demand_preds.cpu(), y_truths.cpu(), station_id, cfg)
+                writer.add_figure(f'Station {station_id}', _plot, global_step=iteration)
+            if iteration % cfg['save_interval'] == 0 or iteration == cfg['max_iterations'] - 1:
+                th.save(model.state_dict(), cfg.model_path(iteration))
 
     test_metrics, test_metrics_dict, y_rate_preds, y_demand_preds, y_truths = eval(model, test_dataset, test_dataloader, cfg)
     scalars = {key: val.item() for key, val in test_metrics_dict.items() if val.dim() == 0}
@@ -222,38 +225,3 @@ def model_train(train_dataset, val_dataset, test_dataset, cfg):
 
     writer.close()
     return model
-
-def reshape_data4viz(y, cfg):
-    """
-        Reshape the data for visualization.
-        Given
-        y_truths: (N_batches, batch_size * N_nodes, 2 * N_preds)
-        reshape and transform into (N_batches * batch_size, N_nodes, 2) in order to allow concatenating data for contiguous segments (e.g. full days).
-        Note: This only makes sense for not-shuffled batch data.
-    """
-    N_batches = y.size(0)
-    y_squashed = y.view(N_batches * cfg.batch_size, cfg.N_stations, cfg.N_predictions, 2)
-    # swap axes such that the predictions are the axis 1
-    y_subsampled = y_squashed[::cfg['N_predictions'], :, :, :].swapaxes(1, 2).reshape(-1, cfg.N_stations, 2)
-    return y_subsampled
-
-def plot_station_over_time(y_rate_preds, y_demand_preds, y_truths, i_station, cfg, times = np.arange(0, 288)):
-    """
-        Plot the rate predictions, demand predictions and true values for a given station over the given times.
-    """
-    y_truths_reshaped = reshape_data4viz(y_truths,cfg)
-    y_preds_reshaped = reshape_data4viz(y_rate_preds,cfg)
-    y_demand_preds_reshaped = reshape_data4viz(y_demand_preds,cfg)
-    
-    y_truth_in_station = y_truths_reshaped[:, i_station, 0]
-    y_pred_in_station = y_preds_reshaped[:, i_station, 0]
-    y_demand_predsin_station = y_demand_preds_reshaped[:, i_station, 0]
-
-    plt.plot(y_truth_in_station[times], label='True Rate')
-    plt.plot(y_pred_in_station[times], label='Prediction', marker = 'o')
-    plt.plot(y_demand_predsin_station[times], label='Demand Prediction', marker = 'x')
-    plt.legend()
-    plt.gca().set(title='Station {}'.format(i_station), xlabel='time [hours]', ylabel='Bike In-Rate')
-    plt.xticks(times[::12], times[::12] * cfg['subsample_minutes'] // 60)
-    return plt.gcf()
-
