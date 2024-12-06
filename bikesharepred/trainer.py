@@ -61,15 +61,15 @@ def loss_fn(y_rate_pred, y_demand_pred, y_truth, y_mask, cfg):
     demand_violation += th.mean(th.relu(y_truth - y_demand_pred)**2 * (~y_mask))
 
     # add additional loss term to penalize if demand or rates are lower than 0
-    other_components = 0
+    other_components = th.tensor(0.)
 
     if cfg.negative_penalty_factor is not None:
         negative_penalty = cfg['negative_penalty_factor'] * th.mean((y_rate_pred < 0) * y_rate_pred ** 2 + (y_demand_pred < 0) * y_demand_pred ** 2)
         other_components += negative_penalty
     
     # penalize the third derivative of the demand
-    α = cfg.third_derivative_penalty or 0.
-    smoothness_violation = 0
+    α = cfg.third_derivative_penalty or th.tensor(0.)
+    smoothness_violation = th.tensor(0.)
     if cfg.third_derivative_penalty is not None:
         smoothness_violation = th.mean(finite_diff_third_derivative(y_demand_pred, axis=1, step_size=cfg.subsample_minutes) ** 2)
 
