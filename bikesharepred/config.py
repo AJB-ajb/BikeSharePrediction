@@ -31,22 +31,30 @@ class PathEncoder(json.JSONEncoder):
 class Config:
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
-        if 'base_dir' not in self.__dict__:
-            self.base_dir = Path(__file__).resolve().parents[1]
-        if 'data_dir' not in self.__dict__:
-            self.data_dir = self.base_dir / 'data'
-        if 'processed_dir' not in self.__dict__:
-            self.processed_dir = self.data_dir / 'processed'
-        if 'model_dir' not in self.__dict__:
-            self.model_dir = self.base_dir / 'models' 
+        # the base dir is always set to the base dir of the github repository
+        
+        # directory for logging and results files, which should usually be kept
+        # in log_base_dir, we create a subdirectory for each experiment
         if 'log_base_dir' not in self.__dict__:
             self.log_base_dir = self.base_dir / 'logs'
 
-        for dir in [self.data_dir, self.processed_dir, self.model_dir, self.log_base_dir]:
+        for dir in [self.data_dir, self.processed_dir, self.log_base_dir, self.model_dir, self.config_dir, self.log_dir]:
             dir.mkdir(exist_ok=True)
+    @property
+    def base_dir(self):
+        return Path(__file__).resolve().parents[1]
+
+    @property
+    def data_dir(self):
+        return self.base_dir / 'data'
+
+    @property
+    def processed_dir(self):
+        return self.data_dir / 'processed'
 
     def __getitem__(self, name: str):
-        return self.__dict__[name]
+        return self.__getattribute__(name)
+    
     def get(self, name: str, default):
         return self.__dict__.get(name, default)
     def __setattr__(self, name: str, value) -> None:
@@ -60,6 +68,9 @@ class Config:
         self.__dict__[name] = value
     
     def model_path(self, epoch):
+        """
+            Return the path to the model file for the given epoch or identifier.
+        """
         return self.model_dir / f'{self.name}_{epoch}.pth'
 
     @staticmethod
@@ -113,47 +124,56 @@ class Config:
             'negative_penalty_factor': 0.0, # additional penalty for negative predictions
             'third_derivative_penalty' : 0.5, # penalty factor for (demand''')^2
             'final_module' : 'lstm', # 'lstm' or 'transformer'
-            'model': 'STGAT' # 'STGAT' or 'LinearModel'
+            'model': 'STGAT', # 'STGAT' or 'LinearModel'
+            'reload_bike_data': False
         } 
         cfg = Config(**_dict)
-
-        cfg.reload_bike_data = False
-        cfg._calculate_dependent_params()
-        # dependent parameters
         return cfg
     
     @staticmethod
     def valid_keys():
         if not hasattr(Config, '_valid_keys'):
             def_config = Config.default_config()
-            def_config._calculate_dependent_params()
-            
             Config._valid_keys.update(def_config.__dict__.keys())
-            
 
-    def _calculate_dependent_params(self):
-        # calculate dependent parameters
-        N_in_features_per_step_node = 2 # in and out rates
-        N_features_per_out_step_node = 4 # in and out rates and demands
+    @property 
+    def in_features_per_node(self):
+        return self.N_history * 2
+    
+    @property
+    def out_features_per_node(self):
+        return self.N_predictions * 4
+    @property
+    def N_in_features_per_step_with_global(self):
+        "Global in features per step, needed for LSTM, and linear layer"
+        if self.N_stations is None:
+            raise ValueError("N_stations not yet set")
+        
+        N_time_features = 4
+        N_base = self.N_stations * 2
+        return N_base + N_time_features if self.use_time_features else N_base
 
-        self.in_features_per_node = N_in_features_per_step_node * self.N_history
-        self.out_features_per_node = N_features_per_out_step_node * self.N_predictions # 2 for in and out rates, 2 for in and out demands
-
-        if self.N_stations is not None:
-            # calculate global in features per step, needed for LSTM, and linear layer
-            self.N_in_features_per_step_with_global = self.N_stations * N_in_features_per_step_node
-            if self.use_time_features:
-                self.N_in_features_per_step_with_global += 4 # 4 time features, weekday, daytime (sin, cos)
-        else:
-            print("Warning: N_stations not yet set, dependent parameters are not yet fully computed and have to be updated later")
-
-        self.log_dir = self.log_base_dir / self.name
+    @property
+    def final_module_params(self):
         if self.final_module == 'lstm':
-            self.final_module_params = self.lstm_params
+            return self.lstm_params
         elif self.final_module == 'transformer':
-            self.final_module_params = self.transformer_params
+            return self.transformer_params
         else:
             raise NotImplementedError(f'{self.final_module} not implemented')
+        
+    @property
+    def model_dir(self):
+        return self.log_base_dir / 'models'
+    @property
+    def config_dir(self):
+        "The directory where configuration files are stored. When a configuration is loaded, the log_base_dir is infered from the position of the configuration file."
+        return self.log_base_dir / 'configs'
+    @property
+    def log_dir(self):
+        "The directory where tensorboard logs are stored"
+        return self.log_base_dir / self.name
+    
 
     def log(self, writer: th.utils.tensorboard.SummaryWriter):
         hparams = {key: val for key, val in self.__dict__.items() if isinstance(val, (int, float, str))}
@@ -192,7 +212,6 @@ class Config:
             },
             'epochs': 1,
         })
-        cfg._calculate_dependent_params()
         return cfg
     @staticmethod
     def overfit_config():
@@ -210,25 +229,34 @@ class Config:
             'N_history': 12
             })
         
-        cfg._calculate_dependent_params()
         return cfg
     
-    def save_to_json(self, file_path: str):
+    def save_to_json(self, file_path = None):
+        """
+            Save file to JSON. Does not save the base directory or the log and log base directories. These are infered from the position of the config file when loading.
+            If none, saves to `config_dir / name.json`
+        """
+        # don't save the base directory
         # make a dict
-        with open(file_path, 'w') as f:
+        file_path = file_path or self.config_dir / f'{self.name}.json'
+        with open(str(file_path), 'w') as f:
             json.dump(self.__dict__, f, cls=PathEncoder)
 
     @staticmethod
-    def load_from_json(file_path: str):
-        with open(file_path, 'r') as f:
+    def load_from_json(file_path):
+        """
+            We assume that the config file is in log_base_dir / 'configs' and infer the log_base_dir from the position of the config file.
+        """
+        file_path = Path(file_path)
+        log_base_dir = file_path.parents[1]
+
+        with open(str(file_path), 'r') as f:
             config_dict = json.load(f, object_hook=PathEncoder._decode_dict)
-        cfg = Config(**config_dict)
-        cfg._calculate_dependent_params()
+        cfg = Config(**(config_dict | {'log_base_dir': log_base_dir}))
         return cfg
     
     @staticmethod
     def load_from_args(args):
         config_dict = vars(args)
         cfg = Config(**config_dict)
-        cfg._calculate_dependent_params()
         return cfg
