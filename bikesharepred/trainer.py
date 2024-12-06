@@ -136,7 +136,7 @@ def eval(model, dataset, dataloader, cfg):
         y_demand_preds[i, :y_pred_rel.shape[0], ...] = y_demand_pred
         y_truths[i, :y_pred_rel.shape[0], ...] = y_truth
 
-        metrics.append(calculate_metrics(y_rate_pred, y_demand_pred, y_truth, cfg, batch))
+        metrics.append(calculate_metrics(y_rate_pred, y_demand_pred, y_truth, cfg, batch) | {'Loss': loss})
     
     averaged_metrics = average(metrics)
     return None, averaged_metrics, y_rate_preds, y_demand_preds, y_truths # first argument unused (legacy)

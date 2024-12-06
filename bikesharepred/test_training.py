@@ -75,10 +75,11 @@ if __name__ == '__main__':
     if default:
 
         cfg = Config.default_config()
-
+        
+        cfg.final_module = 'transformer'
         dataset = BikeGraphDataset(cfg)
-        cfg['max_iterations'] = 1000
-        cfg.save_to_json(None)
+        cfg['max_iterations'] = 10
+        # cfg.save_to_json(None)
 
         train, val, test = dataset.get_day_splits(train_frac=0.7, val_frac=0.15)
         model_train(train, val, test, cfg)
