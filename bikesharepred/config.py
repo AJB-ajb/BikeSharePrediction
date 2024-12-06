@@ -170,6 +170,11 @@ class Config:
             prefix = key + '.' if key is not None else ''
             for sub_key, val in val.items():
                 self._log(f'{prefix}{sub_key}', val, writer)
+
+    def print(self):
+        print(f'Configuration {self.name}:')
+        for key, val in self.__dict__.items():
+            print(f'    {key}: {val}')
         
 
     @staticmethod
