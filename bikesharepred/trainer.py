@@ -68,7 +68,7 @@ def loss_fn(y_rate_pred, y_demand_pred, y_truth, y_mask, cfg):
         other_components += negative_penalty
     
     # penalize the third derivative of the demand
-    α = cfg.third_derivative_penalty
+    α = cfg.third_derivative_penalty or 0.
     smoothness_violation = 0
     if cfg.third_derivative_penalty is not None:
         smoothness_violation = th.mean(finite_diff_third_derivative(y_demand_pred, axis=1, step_size=cfg.subsample_minutes) ** 2)

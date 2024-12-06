@@ -111,7 +111,7 @@ class Config:
             'transformer_params': {
                 'n_layers': 4,
                 'n_heads': 8,
-                'd_model': 32,
+                'd_model': 64,
                 'dim_feedforward': 128
             },
             'optimizer': 'AdamW',
