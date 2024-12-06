@@ -38,8 +38,8 @@ class Config:
         if 'log_base_dir' not in self.__dict__:
             self.log_base_dir = self.base_dir / 'logs'
 
-        for dir in [self.data_dir, self.processed_dir, self.log_base_dir, self.model_dir, self.config_dir, self.log_dir]:
-            dir.mkdir(exist_ok=True)
+        for dir in [self.data_dir, self.processed_dir, self.log_base_dir, self.model_dir, self.log_dir, self.config_dir]:
+            dir.mkdir(exist_ok=True, parents = True)
     @property
     def base_dir(self):
         return Path(__file__).resolve().parents[1]
