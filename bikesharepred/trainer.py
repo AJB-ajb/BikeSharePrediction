@@ -5,6 +5,7 @@ from dataset import z_score, un_z_score, RMSE, MAE, MAPE
 import tqdm
 import torch_geometric.loader as geomloader
 
+from config import Config
 from st_gat import STGAT
 from linear_model import LinearModel
 from dataset import BikeGraphDataset
@@ -43,30 +44,59 @@ def finite_diff_third_derivative(input_tensor, axis=-1, step_size=1.0):
     
     return third_derivative
 
+def average(dcts):
+    "Calculate the average of each key in a list of dictionaries and return as dict."
+    return {key: sum(dct[key] for dct in dcts) / len(dcts) for key in dcts[0].keys()}
 
 def loss_fn(y_rate_pred, y_demand_pred, y_truth, y_mask, cfg):
     """
         The loss for the combined rate and demand prediction model.
         y_rate_pred, y_demand_pred, y_truth, y_mask are all of shape [batch_size × (N_predictions * 2)].
     """
-    rates_loss = th.mean((y_rate_pred - y_truth) ** 2)
+    
+    rate_error = th.mean((y_rate_pred - y_truth) ** 2)
     # the demand loss when mask = 1 i.e. when the stations capacity is not at its relative max or min
-    demand_loss = th.mean((y_demand_pred - y_truth) ** 2 * y_mask)
+    demand_violation = th.mean((y_demand_pred - y_truth) ** 2 * y_mask)
     # if the demand is at its max or min, the demand must be higher than the relative truth
-    demand_loss += th.mean(th.relu(y_truth - y_demand_pred)**2 * (~y_mask))
+    demand_violation += th.mean(th.relu(y_truth - y_demand_pred)**2 * (~y_mask))
 
     # add additional loss term to penalize if demand or rates are lower than 0
+    other_components = th.tensor(0., device = y_rate_pred.device)
 
     if cfg.negative_penalty_factor is not None:
         negative_penalty = cfg['negative_penalty_factor'] * th.mean((y_rate_pred < 0) * y_rate_pred ** 2 + (y_demand_pred < 0) * y_demand_pred ** 2)
-        demand_loss += negative_penalty
+        other_components += negative_penalty
     
     # penalize the third derivative of the demand
+    α = cfg.third_derivative_penalty or th.tensor(0., device = y_rate_pred.device)
+    smoothness_violation = th.tensor(0.)
     if cfg.third_derivative_penalty is not None:
-        demand_loss += cfg.third_derivative_penalty * th.mean(finite_diff_third_derivative(y_demand_pred, axis=1, step_size=cfg.subsample_minutes) ** 2)
+        smoothness_violation = th.mean(finite_diff_third_derivative(y_demand_pred, axis=1, step_size=cfg.subsample_minutes) ** 2)
 
-    return rates_loss + demand_loss
 
+    return rate_error + demand_violation + α * smoothness_violation + other_components, {'RRateMSE': th.sqrt(rate_error), 'RDemMSViol': th.sqrt(demand_violation), 'RSmoothViol': th.sqrt(smoothness_violation)}
+
+def calculate_metrics(y_rate_pred, y_demand_pred, y_truth, cfg, batch):
+    """
+        Calculate a set of metrics for rate and demand predictions and return as dict.
+        params:
+            y_shape: the shape of the tensor that the loss function expects.
+        Note: takes in the unnormalized values.
+    """
+    y_shape = batch.y.shape
+    _, loss_components = loss_fn(y_rate_pred.reshape(y_shape), y_demand_pred.reshape(y_shape), y_truth.reshape(y_shape), batch.y_mask, cfg)
+
+    mse = nn.functional.mse_loss(y_rate_pred, y_truth)
+    rmse = RMSE(y_truth, y_rate_pred)
+    mae = MAE(y_truth, y_rate_pred)
+
+    Δdemand_rate = (y_demand_pred - y_rate_pred).abs().mean()
+    
+    # --------------- compute averaged mse for each step in the future separately ----------------
+    mse_per_future_step = (y_rate_pred - y_truth).pow(2).mean(dim = (0, 2))
+    return loss_components | {'MSE': mse, 'RMSE': rmse, 'MAE': mae, 'MSE per step': mse_per_future_step, 'MA Demand Rate Difference': Δdemand_rate}
+    
+    
 from torch.utils.tensorboard import SummaryWriter
 @th.no_grad()
 def eval(model, dataset, dataloader, cfg):
@@ -79,6 +109,8 @@ def eval(model, dataset, dataloader, cfg):
     
     mse, rmse, mae = 0., 0., 0.
     mse_per_future_step = th.zeros(cfg.N_predictions, dtype=th.float32, device=device)
+
+    metrics = [] # other metrics from the loss function
 
     for i, batch in enumerate(dataloader):
         batch = batch.to(device)
@@ -94,7 +126,7 @@ def eval(model, dataset, dataloader, cfg):
             y_demand_preds = th.empty_like(y_rate_preds)
             y_truths = th.empty_like(y_rate_preds)
             
-        loss = loss_fn(y_rate_pred_rel.reshape(y_shape), y_demand_pred_rel.reshape(y_shape), batch.y, batch.y_mask, cfg)
+        loss, _ = loss_fn(y_rate_pred_rel.reshape(y_shape), y_demand_pred_rel.reshape(y_shape), batch.y, batch.y_mask, cfg)
 
         y_rate_pred = un_z_score(y_rate_pred_rel, dataset.μ, dataset.σ)
         y_demand_pred = un_z_score(y_demand_pred_rel, dataset.μ, dataset.σ)
@@ -104,19 +136,10 @@ def eval(model, dataset, dataloader, cfg):
         y_demand_preds[i, :y_pred_rel.shape[0], ...] = y_demand_pred
         y_truths[i, :y_pred_rel.shape[0], ...] = y_truth
 
-        # --------------- compute standard metrics ----------------
-        mse += nn.functional.mse_loss(y_rate_pred, y_truth)
-        rmse += RMSE(y_truth, y_rate_pred)
-        mae += MAE(y_truth, y_rate_pred)
-        
-        # --------------- compute averaged mse for each step in the future separately ----------------
-        mse_per_future_step += (y_rate_pred - y_truth).pow(2).mean(dim = (0, 2))
-
-    N_batches = len(dataloader)
-    mse, rmse, mae = mse / N_batches, rmse / N_batches, mae / N_batches
-    mse_per_future_step /= N_batches
-
-    return [loss, rmse, mae], {'Loss':loss, 'MSE': mse, 'RMSE': rmse, 'MAE': mae, 'MSE per step': mse_per_future_step}, y_rate_preds, y_demand_preds, y_truths
+        metrics.append(calculate_metrics(y_rate_pred, y_demand_pred, y_truth, cfg, batch) | {'Loss': loss})
+    
+    averaged_metrics = average(metrics)
+    return None, averaged_metrics, y_rate_preds, y_demand_preds, y_truths # first argument unused (legacy)
 
 def instantiate_optimizer(model, cfg):
     optimizer_name = cfg['optimizer']
@@ -124,18 +147,33 @@ def instantiate_optimizer(model, cfg):
     optim = getattr(th.optim, optimizer_name)
     return optim(model.parameters(), **optimizer_params)    
 
+def instantiate_model(cfg):
+    if cfg.model == 'STGAT':
+        model = STGAT(cfg = cfg, **cfg.__dict__)
+    elif cfg.model == 'LinearModel':
+        model = LinearModel(cfg)
+    else:
+        raise NotImplementedError(f"Model {cfg.model} not implemented")
+    device = th.device('cuda' if th.cuda.is_available() else 'cpu')
+    model = model.to(device)
+    model.compile()
+    return model
+
+def load_model(cfg : Config, checkpoint = None):
+    model = instantiate_model(cfg)
+    model_path = cfg.model_path(checkpoint or cfg['max_iterations'])
+    model.load_state_dict(th.load(model_path))
+    return model
+
 def fit_and_evaluate(cfg):
     dataset = BikeGraphDataset(cfg)
-    cfg._calculate_dependent_params()
-    train_dataset, val_dataset, test_dataset = dataset.get_day_splits(train_frac=0.7, val_frac=0.15)
+    train_dataset, val_dataset, test_dataset = dataset.get_day_splits()
 
-    # instantiate model:
+    model = instantiate_model(cfg)
     if cfg.model == 'STGAT':
-        model = STGAT(N_nodes = cfg['N_stations'], cfg = cfg, **cfg.__dict__)
         model = model_train(train_dataset, val_dataset, test_dataset, cfg)
 
     elif cfg.model == 'LinearModel':
-        model = LinearModel(cfg)
         model.train(train_dataset)
 
         test_dataloader = geomloader.DataLoader(test_dataset, batch_size = 32, shuffle = False)
@@ -147,10 +185,8 @@ def fit_and_evaluate(cfg):
 
 
 def model_train(train_dataset, val_dataset, test_dataset, cfg):
-    device = th.device('cuda' if th.cuda.is_available() else 'cpu')
-    model = STGAT(N_nodes = cfg['N_stations'], cfg = cfg, **cfg.__dict__).to(device)
-    print("Compiling model")
-    model.compile()
+    model = instantiate_model(cfg)
+    device = next(model.parameters()).device
 
     print("Model size in MB:", sum(p.numel() for p in model.parameters()) * 4 / 1024 / 1024)
 
@@ -181,15 +217,17 @@ def model_train(train_dataset, val_dataset, test_dataset, cfg):
             y_rate_pred = y_pred[:, :, :2].reshape(batch.y.shape)
             y_demand_pred = y_pred[:, :, 2:].reshape(batch.y.shape)
             
-            loss = loss_fn(y_rate_pred, y_demand_pred, batch.y, batch.y_mask, cfg)
+            loss, _ = loss_fn(y_rate_pred, y_demand_pred, batch.y, batch.y_mask, cfg)
             
             writer.add_scalar('Loss/train', loss, iteration)
             loss.backward()
             optimizer.step()
             train_losses_epoch += loss.item()
             
+            iteration += 1
+            pbar.update(1)
             # --------------- evaluate ----------------
-            if iteration % cfg['eval_interval'] == 0 or iteration == cfg['max_iterations'] - 1:
+            if iteration % cfg['eval_interval'] == 0 or iteration == cfg['max_iterations']:
 
                 model.eval()
                 evals_list, evals_dict, y_rate_preds, y_demand_preds, y_truths = eval(model, val_dataset, val_dataloader, cfg)
@@ -221,11 +259,8 @@ def model_train(train_dataset, val_dataset, test_dataset, cfg):
                 model.train()
 
             # --------------- save model ----------------
-            if iteration % cfg['save_interval'] == 0 or iteration == cfg['max_iterations'] - 1:
+            if iteration % cfg['save_interval'] == 0 or iteration == cfg['max_iterations']:
                 th.save(model.state_dict(), cfg.model_path(iteration))
-
-            iteration += 1
-            pbar.update(1)
 
     test_metrics, test_metrics_dict, y_rate_preds, y_demand_preds, y_truths = eval(model, test_dataset, test_dataloader, cfg)
     scalars = {key: val.item() for key, val in test_metrics_dict.items() if val.dim() == 0}

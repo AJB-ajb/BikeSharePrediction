@@ -57,7 +57,6 @@ class BikeGraphDataset(InMemoryDataset):
         super().__init__(root, transform = None, pre_transform = None)
         self._data, self.slices, self.N_stations, self.μ, self.σ, self.new2oldidx = torch.load(self.processed_paths[0])
         self.cfg['N_stations'] = self.N_stations
-        self.cfg._calculate_dependent_params()
 
     def adjacency_matrix(self, stations, min_stations_connected, max_dst_meters):
         adj = np.zeros((len(stations), len(stations)))
@@ -91,7 +90,6 @@ class BikeGraphDataset(InMemoryDataset):
             stations = stations.iloc[:self.cfg.N_stations]
         else:
             self.N_stations = self.cfg.N_stations = len(stations)
-            self.cfg._calculate_dependent_params()
         # thus we have new_index < old_index
         self.new2old_idx = np.array([old_idx for old_idx in stations.index])
         stations = stations.reset_index(drop=True)

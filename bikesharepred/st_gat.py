@@ -15,29 +15,31 @@ class STGAT(nn.Module):
         - out_features_per_node: number of numbers that are predicted for each node
         normally out_channels := in_channels
     """
-    def __init__(self, in_features_per_node, out_features_per_node, N_nodes, gat_heads, dropout, N_history, final_module_params, final_module, cfg, **kwargs):
+    def __init__(self, gat_heads, dropout, N_history, cfg, **kwargs):
         super(STGAT, self).__init__()
+
+        N_nodes = cfg.N_stations
 
         self.dropout = nn.Dropout(p = dropout)
 
         self.gat_layers = nn.ModuleList()
         for gat_layer_idx in range(cfg.num_gat_layers):
-            gat = geomnn.GATConv(in_channels= in_features_per_node, out_channels= in_features_per_node, heads = gat_heads, dropout = 0, concat = False)
+            gat = geomnn.GATConv(in_channels= cfg.in_features_per_node, out_channels= cfg.in_features_per_node, heads = gat_heads, dropout = 0, concat = False)
             self.gat_layers.append(gat)
 
 
         # number of features per node per time step in the input data
-        self.N_features = in_features_per_node // N_history
+        self.N_features = cfg.in_features_per_node // N_history
         self.N_features_with_global = cfg.N_in_features_per_step_with_global
 
         self.cfg = cfg
-        self.final_module = final_module
+        self.final_module = cfg.final_module
 
-        if final_module == 'lstm':
-            lstm1_hidden_size, lstm2_hidden_size = final_module_params['lstm1_hidden_size'], final_module_params['lstm2_hidden_size']
+        if cfg.final_module == 'lstm':
+            lstm1_hidden_size, lstm2_hidden_size = cfg.final_module_params['lstm1_hidden_size'], cfg.final_module_params['lstm2_hidden_size']
             self.lstm1 = nn.LSTM(input_size=self.N_features_with_global, hidden_size=lstm1_hidden_size, num_layers=1) # outputs sequence outputs with lstm1_hidden_size
             self.lstm2 = nn.LSTM(input_size=lstm1_hidden_size, hidden_size = lstm2_hidden_size, num_layers=1)
-            self.linear = nn.Linear(lstm2_hidden_size, N_nodes * out_features_per_node) 
+            self.linear = nn.Linear(lstm2_hidden_size, N_nodes * cfg.out_features_per_node) 
 
             # LSTM parameter initialization
             for name, param in itertools.chain(self.lstm1.named_parameters(), self.lstm2.named_parameters()):
@@ -48,14 +50,14 @@ class STGAT(nn.Module):
             # Linear weight initialization
             nn.init.xavier_uniform_(self.linear.weight)
 
-        elif final_module == 'transformer':
-            d_model, nhead, num_layers, dim_feedforward = final_module_params['d_model'], final_module_params['n_heads'], final_module_params['n_layers'], final_module_params['dim_feedforward']
+        elif cfg.final_module == 'transformer':
+            d_model, nhead, num_layers, dim_feedforward = cfg.final_module_params['d_model'], cfg.final_module_params['n_heads'], cfg.final_module_params['n_layers'], cfg.final_module_params['dim_feedforward']
 
             self.transformer = DecoderOnlyModel(self.N_features_with_global, d_model, nhead, num_layers, dim_feedforward, N_history, dropout)
-            self.linear = nn.Linear(d_model, N_nodes * out_features_per_node) 
+            self.linear = nn.Linear(d_model, N_nodes * cfg.out_features_per_node) 
 
         else: 
-            raise NotImplementedError(f'{final_module} not implemented')
+            raise NotImplementedError(f'{cfg.final_module} not implemented')
 
     
     def forward(self, batch):

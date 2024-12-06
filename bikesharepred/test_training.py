@@ -42,7 +42,6 @@ if __name__ == '__main__':
 
         dataset = BikeGraphDataset(cfg)
         dataset.process() # force reprocessing
-        cfg._calculate_dependent_params()
 
         device = th.device('cuda' if th.cuda.is_available() else 'cpu')
         print("Running on ", device)
@@ -66,7 +65,6 @@ if __name__ == '__main__':
         
         dataset = BikeGraphDataset(cfg)
         # dataset.process()
-        cfg._calculate_dependent_params()
 
         train, val, test = dataset.get_day_splits(train_frac=0.7, val_frac=0.15)
         model = model_train(train, val, test, cfg)
@@ -75,12 +73,13 @@ if __name__ == '__main__':
 
     default = True
     if default:
+
         cfg = Config.default_config()
-        cfg.reload_bike_data = True
+        
+        cfg.final_module = 'transformer'
         dataset = BikeGraphDataset(cfg)
-        dataset.process()
-        cfg._calculate_dependent_params()
+        cfg['max_iterations'] = 10
+        # cfg.save_to_json(None)
 
         train, val, test = dataset.get_day_splits(train_frac=0.7, val_frac=0.15)
         model_train(train, val, test, cfg)
-        # plot actual samples for comparison
