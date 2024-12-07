@@ -29,20 +29,3 @@ class LinearModel(nn.Module):
         # bring the output in the right shape
         y = y.reshape(batch_size * self.cfg.N_stations, -1)
         return y
-    
-    def fit(self, train_dataset):
-        x = train_dataset.x.numpy()
-        y = train_dataset.y.numpy()
-        time_features = train_dataset.time_features.numpy()
-
-        self.scipy_linear = LinearRegression()
-
-        x = x.reshape(-1, self.N_in_features - self.N_time_features)
-        time_features = time_features.reshape(-1, self.N_time_features)
-
-        y = y.reshape(-1, self.N_out_features)
-
-        x = np.concatenate((x, time_features), axis = -1)
-
-        self.scipy_linear.fit(x, y)
-        self.linear.weight[::2, :] = torch.nn.Parameter(torch.tensor(self.scipy_linear.coef_)) # untested
