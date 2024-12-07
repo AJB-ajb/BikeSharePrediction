@@ -95,7 +95,7 @@ class Config:
             'subsample_minutes': 5, # subsample data to 5 minute intervals
             'N_history': 12, # take 12 subsampled data points as history
             'N_predictions': 9, # predict the following 9 data points
-            'min_stations_connected': 2,
+            'min_stations_connected': 10,
             'max_dst_meters': 500, # maximum distance between stations to be considered connected in the GCN graph
             'use_time_features': True, # use explicit embeddings of day of week and time of day
             # ----------- hyperparameters ------------
