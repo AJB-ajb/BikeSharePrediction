@@ -3,12 +3,14 @@
 // ------ General Styling ---------
 #show link: underline
 
+#set table(align: left, inset: (x: 4pt, y: 3pt), stroke: (x, y) => if y <= 1 { (top: 0.5pt)}, fill: (x, y) => if y > 0 and calc.rem(y, 2) == 0  { rgb("#efefef") })
+
 #show: ieee.with(
   title: [Learning Demand Functions for Bike-Sharing Using Spatio-Temporal Graph Neural Networks],
   abstract: [
     Bike-sharing usage prediction has been implemented and analyzed using a variety of models, ranging from linear and logistic regression models with extensive spatial features [cit], decision features, ARIMA [cit] to deep learning models with convolutional [cit] and graph features [cit]. 
-    However, modeling and prediction of the underlying demand function that drives the usage has not been rigorously attempted to the best of our knowledge, possibly due to the ill-posed nature of the problem.
-    We propose several defining properties of a demand function and extend the Spatio-Temporal Graph Neural Network (STGAT) model from traffic prediction to jointly predict both the actual usage rate and a suitable demand function matching the data, which we take from the City of Toronto's open data portal [cit]. We analyze accuracy and behavior of the model in normal usage prediction and illustrate the behavior of the learned demand function in various scenarios. 
+    However, modeling and prediction of the underlying demand function that drives the usage has not been rigorously attempted to the best of our knowledge, possibly due to the ill-posed nature of the problem. Our goal is to learn a demand function from data, that is suitable for short term demand prediction, such as adaptive pricing applications.
+    We propose defining properties of a demand function and extend the biologically inspired Spatio-Temporal Graph Neural Network (STGAT) architecture from traffic prediction to jointly predict both the actual usage rate and a suitable demand function matching the data, which we take from the City of Toronto's open data portal [cit]. We analyze predictive performance and measures of demand prediction comparing three variations of the architecture and show the qualitative behavior of the learned demand function. 
   ],
   authors: (
     (
@@ -119,26 +121,21 @@ Additionally, because bike-sharing depends significantly on time feature informa
 
 The base network consists of the following layers:
 - A graph attention layer with $8$ heads, followed by dropout.
-- An LSTM layer with hidden size $32$, which takes the reshaped historic data over all nodes.
+- An LSTM layer with hidden size $32$, which takes the reshaped historic data over all nodes. As modification of the original architecture, we concatenate additional daytime and day of week features to this layer's input. We encode both with sinusoidal encodings due to their periodic nature.
 - A second LSTM layer with hidden size $128$.
 - A final linear layer operating on the last LSTM prediction, outputting information for all $9$ timepoints.
-
-For the evaluation of our demand prediction task, we choose to compare three reference models:
-- The base STGAT model, with number of nodes and final output size adapted to the problem, without dropout.
-- An upscaled and regularized variant, with LSTM sizes $(128, 256)$, dropout of $0.95$ and weight decay $0.4$.
-- A variation, where we replace the LSTMs by a decoder-only transformer with $4$ layers, $8$ attention heads, and an embedding size of $32$.
 
 // precise description; also transformer variation
 // architecture: straight diagram [td]
 
 == Modeling Details
-We use the historic bike-sharing data provided from the city of Toronto's open data portal. For all computations, we use the data for the full month May 2024. For the station geographical locations, we use the current live information provided. As of November $2024$, there are $861$ stations in the data. Notably, because historic station capacities are not given and station capacities frequently change due to extension and relocation, we have to estimate when a station is full or empty from the bikes taken in and out. For an exploratory spatial data analysis of Toronto's bike-sharing system, see our #link("https://medium.com/ai4sm/exploring-spatial-patterns-in-torontos-bike-sharing-system-7b5c486ae250", "Medium article").
+We use the historic bike-sharing data provided from the city of Toronto's open data portal. For all computations, we use the data for the full month May 2024. For the station geographical locations, we use the current live information provided. As of November $2024$, there are $861$ stations in the data. Notably, because historic station capacities are not given and station capacities frequently change due to extension and relocation, we have to estimate when a station is full or empty from the bikes taken in and out. For an exploratory spatial data analysis of Toronto's bike-sharing system, where we also cover other details of the data processing, see our #link("https://medium.com/ai4sm/exploring-spatial-patterns-in-torontos-bike-sharing-system-7b5c486ae250", "Medium article").
 
 === Station Occupancy Estimation
 The behavior at most stations follows a clear daily pattern, where bikes show wave-like patterns, however, the cumulative number of bikes either increases or declines over the month. This is probably due to bikes taken out for repairing or relocation, which are not logged in the ridership data. 
 In order to estimate when a station is empty or full, we thus take daily minima and maxima and consider the station full if the cumulative number of bikes at that timepoint is within $2$ bikes close to the maximum or minimum, respectively, as marked in @figure:cap. Notably, we aim to err on the side of overestimation, because if a station is almost full at a time, usually users remember this behavior and refrain from using this station during that time, although the demand exists.
 
-#figure(image("imgs/cum_bikes_daily_with_capacity_marked.png"), caption: [Cumulative number of bikes in a station over several days with capacity bounds marked.]) <figure:cap>
+#figure(image("imgs/cum_bikes_daily_with_capacity_marked.png"), caption: [Cumulative number of bikes in a station over several days with estimated capacity bounds marked.]) <figure:cap>
 
 === Temporal Horizon and Rate Calculation
 In modeling bike sharing demand, the prediction time horizon and the averaging horizon fundamental parameters. In @Dastjerdi2022, the number of pickups in $15$ minutes was found to be reliably predictable, which is equivalent to predicting a uniform average over $15$ minutes. 
@@ -147,9 +144,44 @@ Because we are interested in finding a suitable demand function over time, which
 
  // critical choice: smoothing window. We use gaussian, σ 10mins, i.e. ≈63% of the information are from ± 10 minutes, 95% are within 20 minutes (predicting the number of bikes taken out in the next 20 minutes has been identified as the most effective interval)
 = Performance Evaluation <sec:evaluation>
-//: Establish a set of evaluation metrics and run some experiments with different values of algorithm parameters to quantitatively and qualitatively assess the performance of the developed solution. Students must identify the pros and cons of each technique and assess the quality of work as well as its fit with project objectives.
+For the evaluation of our demand prediction task, we choose to compare three reference models:
+- The base STGAT model, with number of nodes and final output size adapted to the problem, without dropout.
+- An upscaled and regularized variant, with LSTM sizes $(128, 256)$, dropout of $0.95$ and weight decay $0.4$.
+- A variation, where we replace the LSTMs by a decoder-only transformer with $4$ layers, $8$ attention heads, and an embedding size of $32$.
 
-// Generalization error
+We split the whole month data into separate days and use approximately $70%$ of these for training, $15%$ for validation for hyperparameter optimization and the rest for testing.
+Notably, the predictive performance of the models depends strongly on the exact split chosen, which is likely due to the limited data investigated, as the testing days might fall on special holidays or other unusual days, where the behavior is significantly different than in the training set. However, this split ensures the model is tested on fully unseen days, as opposed to only unseen segments of these.
+
+//: Establish a set of evaluation metrics and run some experiments with different values of algorithm parameters to quantitatively and qualitatively assess the performance of the developed solution. Students must identify the pros and cons of each technique and assess the quality of work as well as its fit with project objectives.
+We evaluate
+
+// Quantitative Comparison
+In the following, if not noted otherwise, the root mean squared error (RMSE) and mean absolute error (MAE) will always be in $["Bikes"/"Hour"]$, while the mean squared error (MSE) is in $["Bikes"/"Hour"]^2$ and the loss is dimensionless. 
+
+#figure(
+table(columns: 5,
+  table.header([Model], [RMSE], [MSE], [MAE], [Loss]),
+  [Linear], [$2.28$], [$6.28$], [$1.64$], [$2.60$],
+  [STGAT], [$1.55$], [$3.07$], [$0.857$], [$0.787$],
+  [STGAT-upscaled], [$1.55$], [$3.09$], [$0.868$], [$0.812$],
+  [STGAT-transformer], [$1.57$], [$3.11$], [$0.868$], [$0.8$]
+),
+caption: [Quantitative comparison of the predictive quality of models.]
+)
+
+
+#figure(
+table(columns: 4,
+  table.header([Model], [RDemMSViol], [RSmoothViol], [MADemRateDiff]),
+  [Linear], [$2.83$], [$0.0603$], [$4.65$],
+  [STGAT], [$1.27$], [$0.00529$], [$1.08$],
+  [STGAT-upscaled], [$1.29$], [$0.00706$], [$1.23$],
+  [STGAT-transformer], [$1.29$], [$0.00543$], [$1.08$]
+  ),
+  
+  caption: [Comparison of demand metrics.]
+)
+
 
 // Qualitative Comparison:
 // Demand function plotted for trained model, compared to prediction
