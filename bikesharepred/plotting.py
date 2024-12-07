@@ -59,9 +59,12 @@ def plot_station_over_time_reg(y_rate_preds, y_demand_preds, y_truths, i_station
     ylabel = 'In Rate' if in_rate else 'Out Rate'
 
     plt.clf()
-    plot_horizon_over_time(y_rate_preds, i_station, horizon, times, cfg, in_rate, label='Predicted Rate', linestyle='--')
-    plot_horizon_over_time(y_demand_preds, i_station, horizon, times, cfg, in_rate, label='Predicted Demand', linestyle=':')
-    plot_horizon_over_time(y_truths, i_station, horizon, times, cfg, in_rate, label='True Rate')
+
+    x_times = times * cfg.subsample_minutes
+
+    plot_horizon_over_time(x_times,y_rate_preds, i_station, horizon, times, cfg, in_rate, label='Predicted Rate', linestyle='--')
+    plot_horizon_over_time(x_times,y_demand_preds, i_station, horizon, times, cfg, in_rate, label='Predicted Demand', linestyle=':')
+    plot_horizon_over_time(x_times, y_truths, i_station, horizon, times, cfg, in_rate, label='True Rate')
 
     plt.legend()
     horizon_minutes = horizon * cfg.subsample_minutes

@@ -144,31 +144,42 @@ Because we are interested in finding a suitable demand function over time, which
 
  // critical choice: smoothing window. We use gaussian, σ 10mins, i.e. ≈63% of the information are from ± 10 minutes, 95% are within 20 minutes (predicting the number of bikes taken out in the next 20 minutes has been identified as the most effective interval)
 = Performance Evaluation <sec:evaluation>
+#let min = "min"
+
 For the evaluation of our demand prediction task, we choose to compare three reference models:
 - The base STGAT model, with number of nodes and final output size adapted to the problem, without dropout.
 - An upscaled and regularized variant, with LSTM sizes $(128, 256)$, dropout of $0.95$ and weight decay $0.4$.
 - A variation, where we replace the LSTMs by a decoder-only transformer with $4$ layers, $8$ attention heads, and an embedding size of $32$.
 
 We split the whole month data into separate days and use approximately $70%$ of these for training, $15%$ for validation for hyperparameter optimization and the rest for testing.
-Notably, the predictive performance of the models depends strongly on the exact split chosen, which is likely due to the limited data investigated, as the testing days might fall on special holidays or other unusual days, where the behavior is significantly different than in the training set. However, this split ensures the model is tested on fully unseen days, as opposed to only unseen segments of these.
+Notably, the predictive performance of the models depends strongly on the exact split chosen, which is likely due to the limited data investigated, as the testing days might fall on special holidays or other unusual days, where the behavior is significantly different than in the training set. However, this split ensures the model is tested on fully unseen days, as opposed to only unseen segments of these. 
+Also, as in @Kong_STGAT_2020, we normalize the data by calculating the Z-score for model input and inverting the transformation for output, i.e. the loss calculated is dimensionless.
 
-//: Establish a set of evaluation metrics and run some experiments with different values of algorithm parameters to quantitatively and qualitatively assess the performance of the developed solution. Students must identify the pros and cons of each technique and assess the quality of work as well as its fit with project objectives.
-We evaluate
-
-// Quantitative Comparison
 In the following, if not noted otherwise, the root mean squared error (RMSE) and mean absolute error (MAE) will always be in $["Bikes"/"Hour"]$, while the mean squared error (MSE) is in $["Bikes"/"Hour"]^2$ and the loss is dimensionless. 
+//: Establish a set of evaluation metrics and run some experiments with different values of algorithm parameters to quantitatively and qualitatively assess the performance of the developed solution. Students must identify the pros and cons of each technique and assess the quality of work as well as its fit with project objectives.
+
+In order to compare the predictive quality we compare the RMSE, MSE and MAE on the test set, as in @Kong_STGAT_2020. Notably the predictive performance of all STGAT models is very similar, with the transformer giving a slightly higher RMSE of $1.57$. All models outperform the linear baseline model in all metrics significantly. Also, the specific performance seems to not benefit from upscaling the model, although a larger model would probably be beneficial for a larger data set of multiple years.
+// Quantitative Comparison
 
 #figure(
-table(columns: 5,
-  table.header([Model], [RMSE], [MSE], [MAE], [Loss]),
-  [Linear], [$2.28$], [$6.28$], [$1.64$], [$2.60$],
-  [STGAT], [$1.55$], [$3.07$], [$0.857$], [$0.787$],
-  [STGAT-upscaled], [$1.55$], [$3.09$], [$0.868$], [$0.812$],
-  [STGAT-transformer], [$1.57$], [$3.11$], [$0.868$], [$0.8$]
+table(columns: 6,
+  table.header([Model], [Model size], [RMSE], [MSE], [MAE], [Loss]),
+  [Linear], [$ 2449.11$ MiB], [$2.28$], [$6.28$], [$1.64$], [$2.60$],
+  [STGAT], [$ 16.45$ MiB], [$1.55$], [$3.07$], [$0.857$], [$0.787$],
+  [STGAT-upscaled], [$35.54$ MiB], [$1.55$], [$3.09$], [$0.868$], [$0.812$],
+  [STGAT-transformer], [$8.90$ MiB],[$1.57$], [$3.11$], [$0.868$], [$0.8$]
 ),
-caption: [Quantitative comparison of the predictive quality of models.]
+caption: [Quantitative comparison of the predictive metrics of models evaluated on the test set, along with model size.]
 )
 
+For the qualitative illustration of the  extrapolation, we show true rates, and predicted rates and demands for a section of the train data for one station.
+We can see that the model's demand predictions generally follow similar shapes as its prediction, but are higher on various points.
+Here, we see that the model predicts a demand 
+
+#figure(
+image("imgs/dem_vs_pred_vs_true_station6_train.png"),
+caption: [Example comparison of demand and rate predictions along with ground truth on the test set for a horizon prediction of $20"min"$.]
+)
 
 #figure(
 table(columns: 4,
