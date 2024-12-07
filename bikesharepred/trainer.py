@@ -167,7 +167,7 @@ def load_model(cfg : Config, checkpoint = None):
 
 def fit_and_evaluate(cfg):
     dataset = BikeGraphDataset(cfg)
-    train_dataset, val_dataset, test_dataset = dataset.get_day_splits()
+    train_dataset, val_dataset, test_dataset = dataset.get_day_splits(train_frac=0.7, val_frac=0.15)
 
     model = instantiate_model(cfg)
     if cfg.model == 'STGAT':

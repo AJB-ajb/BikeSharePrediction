@@ -21,8 +21,8 @@ if __name__ == '__main__':
 
     TEST_linear = False
     if TEST_linear:
-        cfg = Config.default_config()
-        cfg.σ = 60
+        cfg = Config.overfit_config()
+        # cfg['width_mins'] = 10
         cfg.model = 'LinearModel'
         # clear gc because fitting the linear model on the whole dataset at once is memory intensive
         import gc
@@ -74,9 +74,10 @@ if __name__ == '__main__':
     default = True
     if default:
 
-        cfg = Config.default_config()
+        cfg = Config.overfit_config()
         
-        cfg.final_module = 'transformer'
+        cfg['model'] = 'LinearModel'
+        #cfg.final_module = 'transformer'
         dataset = BikeGraphDataset(cfg)
         cfg['max_iterations'] = 10
         # cfg.save_to_json(None)

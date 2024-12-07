@@ -1,5 +1,8 @@
 #import "@preview/charged-ieee:0.1.3": ieee
 
+// ------ General Styling ---------
+#show link: underline
+
 #show: ieee.with(
   title: [Learning Demand Functions for Bike-Sharing Using Spatio-Temporal Graph Neural Networks],
   abstract: [
@@ -105,18 +108,44 @@ $ where $α ∈ ℝ$ is a regularization constant and we used abbreviations to d
 
 // STGAT architecture and advantages
 // describe features of graph neural networks
+In order to suitably solve the minimization problem, we adapt the spatio-temporal graph attention neural network architecture (STGAT) from @Kong_STGAT_2020. We base our adaptation on the open implementation from @wang_course_project. 
+// describe bio inspired aspects
+Generally, a graph neural network (GNN) is a biologically inspired approach to machine learning, which operates on graph-structured data. The fundamental layer employed in a graph neural network is a graph convolutional layer (GCN), which computes output node features by computing and then aggregating features from each incoming node. The graph attention layer (GAT) employed in the STGAT is an extension of this layer, which weights the computed features by a learned attention score in order to compute a more refined representation. Notably, the fundamental principle of an attention mechanism, itself biologically inspired, has proven to be successful in many machine learning domains. 
 
-In order to suitably solve the minimization problem
-// architecture: straight diagram
+The STGAT architecture in @Kong_STGAT_2020 is constructed to predict car traffic velocities at measurement points, given historical velocities over all measurement points as graph.
+We adapt the final linear layer to give bike in-, out-rate and in-, out-demand predictions. We choose to investigate the STGAT architecture because of its performance in predicting roughly the next $45$ minutes, given the last hour of information, which is a  time horizon that would be useful for demand prediction for a dynamic pricing problem, and the similarity of the problems. 
+
+Additionally, because bike-sharing depends significantly on time feature information [@EREN2020101882], 
+
+The base network consists of the following layers:
+- A graph attention layer with $8$ heads, followed by dropout.
+- An LSTM layer with hidden size $32$, which takes the reshaped historic data over all nodes.
+- A second LSTM layer with hidden size $128$.
+- A final linear layer operating on the last LSTM prediction, outputting information for all $9$ timepoints.
+
+For the evaluation of our demand prediction task, we choose to compare three reference models:
+- The base STGAT model, with number of nodes and final output size adapted to the problem, without dropout.
+- An upscaled and regularized variant, with LSTM sizes $(128, 256)$, dropout of $0.95$ and weight decay $0.4$.
+- A variation, where we replace the LSTMs by a decoder-only transformer with $4$ layers, $8$ attention heads, and an embedding size of $32$.
+
+// precise description; also transformer variation
+// architecture: straight diagram [td]
 
 == Modeling Details
-In modeling 
-// Demand capping
-// Figure: Demand capping at various stations
-// 
-#figure(image("imgs/cum_bikes_daily_with_capacity_marked.png"), caption: [Cumulative number of bikes in a station over several days with capacity bounds marked.])
- 
-// critical choice: smoothing window. We use gaussian, σ 10mins, i.e. ≈63% of the information are from ± 10 minutes, 95% are within 20 minutes (predicting the number of bikes taken out in the next 20 minutes has been identified as the most effective interval)
+We use the historic bike-sharing data provided from the city of Toronto's open data portal. For all computations, we use the data for the full month May 2024. For the station geographical locations, we use the current live information provided. Notably, because historic station capacities are not given, we have to estimate when a station is full or empty from the bikes taken in and out. For an exploratory spatial data analysis of Toronto's bike-sharing system, see our #link("https://medium.com/ai4sm/exploring-spatial-patterns-in-torontos-bike-sharing-system-7b5c486ae250", "Medium article").
+
+=== Station Occupancy Estimation
+The behavior at most stations follows a clear daily pattern, where bikes show wave-like patterns, however, the cumulative number of bikes either increases or declines over the month. This is probably due to bikes taken out for repairing or relocation, which are not logged in the ridership data. 
+In order to estimate when a station is empty or full, we thus take daily minima and maxima and consider the station full if the cumulative number of bikes at that timepoint is within $2$ bikes close to the maximum or minimum, respectively, as marked in @figure:cap. Notably, we aim to err on the side of overestimation, because if a station is almost full at a time, usually users remember this behavior and refrain from using this station during that time, although the demand exists.
+
+#figure(image("imgs/cum_bikes_daily_with_capacity_marked.png"), caption: [Cumulative number of bikes in a station over several days with capacity bounds marked.]) <figure:cap>
+
+=== Temporal Horizon and Rate Calculation
+In modeling bike sharing demand, the prediction time horizon and the averaging horizon fundamental parameters. In @Dastjerdi2022, the number of pickups in $15$ minutes was found to be reliably predictable, which is equivalent to predicting a uniform average over $15$ minutes. 
+In our approach, we follow @Kong_STGAT_2020 and predict $9$ timepoints in $5$ minute intervals over the next $45$ minutes, given $12$ timepoints in the past, for all stations at the same time. Due to our averaging approach, which averages over partial timepoints in the future, we choose the standard evaluation horizon to be $20$ minutes, which has in @Ashqar2017 also been found to be the most effective horizon for prediction using standard ML models.
+Because we are interested in finding a suitable demand function over time, which is related to rate data, a way of averaging the bike pickups has to be chosen. Notably, if one chooses to predict the exact number of bikes taken out or in each minute, one finds almost random behavior, because whether one arrives a minute later or not depends on many other factors, which are insignificant to the demand. Thus, we choose to average with a gaussian filter with $σ = 10 "min"$ to calculate rate information. For this standard deviation of $10$ minutes, thus roughly $63%$ of the information accumulated lies in the interval $±10 "min"$ around each datapoint and $≈95%$ in the $±20 "min"$ interval. Empirically, this interval yields nontrivial prediction results. (Notably, smoothing with $σ = 60 "min"$ renders the prediction task trivial, yielding similar accuracies for both linear and more complex models.)
+
+ // critical choice: smoothing window. We use gaussian, σ 10mins, i.e. ≈63% of the information are from ± 10 minutes, 95% are within 20 minutes (predicting the number of bikes taken out in the next 20 minutes has been identified as the most effective interval)
 = Performance Evaluation <sec:evaluation>
 //: Establish a set of evaluation metrics and run some experiments with different values of algorithm parameters to quantitatively and qualitatively assess the performance of the developed solution. Students must identify the pros and cons of each technique and assess the quality of work as well as its fit with project objectives.
 
@@ -138,6 +167,13 @@ In modeling
 // Predictions of problematic areas
 = Conclusions and Recommendations <sec:conclusion>
 //: summarize the conclusion and future improvement. Explain how did you solve the problem; what problems were met? what did the results show? And how to refine the proposed solution? You may organize ideas using lists or numbered points, if appropriate, but avoid making your article into a check-list or a series of encrypted notes.
+
+// Future Work and Improvement:
+// Develop a dynamic pricing model based on the demand prediction and a simulation using the station data
+// Train and compare on full data (multiple years)
+// Adapt deeper graph-neural network approaches with edge features to improve generalization to extended bike networks
+// add weather, seasonal and holiday features
+
 = Code <sec:code>
 // : provide a GitHub permanent link to the code that implements the proposed solution.
 
