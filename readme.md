@@ -4,11 +4,6 @@
 + [the main reference notebook, illustrating training and loss of the main adapted STGAT model](https://colab.research.google.com/drive/1Pg2e6z50IkK-yZIYnzHQsPGhUfJja5Qx?usp=sharing)
 + [the notebook for the exploratory spatial data analysis](https://colab.research.google.com/drive/1Vmkf_HsPUwCMqX1inZPrSJnfUMiurx1Y?usp=sharing)
 
-## Installation
-+ Clone the repository
-+ Open the [notebook](./documents/midterm_article/visualizations_article.ipynb)
-  + Set `download_data = True` and `process_data = True` and run the cell, this should download and process the relevant data
-
 ## Main Data Sources
 - Life data and station information: https://open.toronto.ca/dataset/bike-share-toronto/
   - Main station information at https://tor.publicbikesystem.net/ube/gbfs/v1/en/station_information
