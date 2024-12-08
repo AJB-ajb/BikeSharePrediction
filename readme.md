@@ -1,4 +1,9 @@
-# Bike Share Toronto Congestion Analysis
+# Generalized Demand Prediction Using Spatio Temporal Graph Attention Networks
+- [Our medium article on exploring spatial and temporal patterns of bike sharing in Toronto](https://medium.com/ai4sm/exploring-spatial-patterns-in-torontos-bike-sharing-system-7b5c486ae250)
+## Notebooks 
++ [the main reference notebook, illustrating training and loss of the main adapted STGAT model](https://colab.research.google.com/drive/1Pg2e6z50IkK-yZIYnzHQsPGhUfJja5Qx?usp=sharing)
++ [the notebook for the exploratory spatial data analysis](https://colab.research.google.com/drive/1Vmkf_HsPUwCMqX1inZPrSJnfUMiurx1Y?usp=sharing)
+
 ## Installation
 + Clone the repository
 + Open the [notebook](./documents/midterm_article/visualizations_article.ipynb)
