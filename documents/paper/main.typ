@@ -263,6 +263,10 @@ For future investigation, we find that several aspects are worth further work:
 
 = Code <sec:code>
 // : provide a GitHub permanent link to the code that implements the proposed solution.
+We provide the full implementation of our solution and evaluation in our github repository: 
+- Github permanent link to the main repository's readme: #link("https://github.com/AJB-ajb/BikeSharePrediction/blob/b0b85bd88a0074540bb745c39b7cb50b3c6dfe60/readme.md", [Link])
+
+- A Google colab notebook that allows running and evaluating the main STGAT model: #link("https://colab.research.google.com/drive/1Pg2e6z50IkK-yZIYnzHQsPGhUfJja5Qx?usp=sharing", [Link])
 
 #if false [
 = Appendix
