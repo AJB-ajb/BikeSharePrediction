@@ -61,6 +61,7 @@ For those familiar with the notion of counterfactual reasoning, the demand can b
 = Literature Review <sec:lit_review>
 // conduct a critical survey on similar solutions and explain how your solution extends or differs from these solutions. 
 
+
 = Problem Formulation and Modeling <sec:modeling>
 // describe the include mathematical formulation of the problem and possible modeling approaches.
 #let (ID, OD) = ("ID", "OD")
