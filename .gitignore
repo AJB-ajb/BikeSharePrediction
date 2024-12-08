@@ -3,7 +3,6 @@ data/
 __pycache__/
 *.html
 *.gif
-*.png
 *.zip
 *.tmp
 ???/processed/
