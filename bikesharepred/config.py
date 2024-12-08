@@ -38,8 +38,8 @@ class Config:
         if 'log_base_dir' not in self.__dict__:
             self.log_base_dir = self.base_dir / 'logs'
 
-        for dir in [self.data_dir, self.processed_dir, self.log_base_dir, self.model_dir, self.config_dir, self.log_dir]:
-            dir.mkdir(exist_ok=True)
+        for dir in [self.data_dir, self.processed_dir, self.log_base_dir, self.model_dir, self.log_dir, self.config_dir]:
+            dir.mkdir(exist_ok=True, parents = True)
     @property
     def base_dir(self):
         return Path(__file__).resolve().parents[1]
@@ -95,7 +95,7 @@ class Config:
             'subsample_minutes': 5, # subsample data to 5 minute intervals
             'N_history': 12, # take 12 subsampled data points as history
             'N_predictions': 9, # predict the following 9 data points
-            'min_stations_connected': 2,
+            'min_stations_connected': 10,
             'max_dst_meters': 500, # maximum distance between stations to be considered connected in the GCN graph
             'use_time_features': True, # use explicit embeddings of day of week and time of day
             # ----------- hyperparameters ------------

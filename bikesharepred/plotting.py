@@ -46,8 +46,9 @@ def plot_horizon_over_time(ys, i_station, horizon, times, cfg, in_rate, **plot_k
         return ys_future
     y_extracted = extract_horizon(ys)
 
+    x_times = times * cfg.subsample_minutes
     last_dim_idx = 0 if in_rate else 1
-    plt.plot(y_extracted[:, last_dim_idx], **plot_kwargs)
+    plt.plot(x_times, y_extracted[:, last_dim_idx], **plot_kwargs)
 
 
 def plot_station_over_time_reg(y_rate_preds, y_demand_preds, y_truths, i_station, horizon, cfg, times = np.arange(0, 288), in_rate = True, **plot_kwargs):
@@ -59,6 +60,7 @@ def plot_station_over_time_reg(y_rate_preds, y_demand_preds, y_truths, i_station
     ylabel = 'In Rate' if in_rate else 'Out Rate'
 
     plt.clf()
+
     plot_horizon_over_time(y_rate_preds, i_station, horizon, times, cfg, in_rate, label='Predicted Rate', linestyle='--')
     plot_horizon_over_time(y_demand_preds, i_station, horizon, times, cfg, in_rate, label='Predicted Demand', linestyle=':')
     plot_horizon_over_time(y_truths, i_station, horizon, times, cfg, in_rate, label='True Rate')
