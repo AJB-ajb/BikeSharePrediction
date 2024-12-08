@@ -62,7 +62,9 @@ For those familiar with the notion of counterfactual reasoning, the demand can b
 // conduct a critical survey on similar solutions and explain how your solution extends or differs from these solutions. 
 == Scope and Overview
 Due to the vastly growing number of bike sharing systems, bike sharing usage prediction has been investigated by a number of authors in the last $15$ years. While classical machine learning approaches such as regression and boosting have been used in the early developments, in recent years, deep learning approaches have been found to give significant advantages in the forecasting domain @YANG2020101521. 
-Based on the literature, we compare the following machine learning approaches to bike-share prediction.
+Based on the literature, we compare the following machine learning approaches to bike-share prediction. Notably our approach differs from all of them in two aspects:
+- We predict rates obtained by a gaussian filter, providing a localized smooth average for a good demand prediction.
+- As defined in @sec:modeling, we use a novel loss function that allows extrapolating demand to time horizons where the demand cannot be infered due to full or empty stations.
 
 == Classification Tree
 We organize the approaches in a tree in @tab:MethodTree for a schematic overview.
