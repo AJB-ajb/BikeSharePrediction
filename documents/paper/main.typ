@@ -8,7 +8,7 @@
 #show: ieee.with(
   title: [Learning Demand Functions for Bike-Sharing Using Spatio-Temporal Graph Neural Networks],
   abstract: [
-    Bike-sharing usage prediction has been implemented and analyzed using a variety of models, ranging from linear and logistic regression models with extensive spatial features [cit], decision features, ARIMA [cit] to deep learning models with convolutional [cit] and graph features [cit]. 
+    Bike-sharing usage prediction has been implemented and analyzed using a variety of models, ranging from linear and logistic regression models with extensive spatial features [@Ashqar2017], decision features, ARIMA [@Dastjerdi2022] to deep learning models with convolutional [@Dastjerdi2022] and graph features [@YANG2020101521, @Liang2024]. 
     However, modeling and prediction of the underlying demand function that drives the usage has not been rigorously attempted to the best of our knowledge, possibly due to the ill-posed nature of the problem. Our goal is to learn a demand function from data, that is suitable for short term demand prediction, such as adaptive pricing applications.
     We propose defining properties of a demand function and extend the biologically inspired Spatio-Temporal Graph Neural Network (STGAT) architecture from traffic prediction to jointly predict both the actual usage rate and extrapolate a suitable demand function. We analyze predictive performance on a subset of historic ridership data in Toronto. We analyze measures of demand prediction comparing the adapted base STGAT architecture, an upscaled variant and a variation with a transformer backend. 
     We find that the learned demand function successfully encodes the defined axiomatic aspects of the demand. Also, on the investigated data, all three models show very similar performance, significantly outperforming a linear baseline.
@@ -60,7 +60,54 @@ For those familiar with the notion of counterfactual reasoning, the demand can b
 
 = Literature Review <sec:lit_review>
 // conduct a critical survey on similar solutions and explain how your solution extends or differs from these solutions. 
+== Scope and Overview
+Due to the vastly growing number of bike sharing systems, bike sharing usage prediction has been investigated by a number of authors in the last $15$ years. While classical machine learning approaches such as regression and boosting have been used in the early developments, in recent years, deep learning approaches have been found to give significant advantages in the forecasting domain @YANG2020101521. 
+Based on the literature, we compare the following machine learning approaches to bike-share prediction.
 
+== Classification Tree
+We organize the approaches in a tree in @tab:MethodTree for a schematic overview.
+
+#figure(
+  caption: [A classification tree of the employed ML approaches],
+  image("imgs/MethodTree.png", width: 90%, height: 33%)
+)<tab:MethodTree>
+
+== Articles
+=== Bike-Sharing Demand Prediction at Community Level under COVID-19 Using Deep Learning @Dastjerdi2022
+
+This article investigates short-term bike-sharing demand forecasting in Montreal. The authors compare deep learning techniques for predicting bike pickups 15 minutes ahead in six communities identified within the city’s bike-sharing network. The study compares the performance of LSTMs (Long Short Term Memory, a recurrent network type), CNN (Convolutional Neural Network)-LSTM hybrids, and ARIMA (Auto-Regressive Integrated Moving Average). The authors trained the models based on two main feature attributes: historical demand data in 15-minute intervals and weather conditions. They found the CNN-LSTM hybrid model outperforms the other models significantly due to leveraging spatial information, and that especially ARIMA suffers from overfitting. An advantage of the ARIMA model is found to be its interpretability.
+
+Similar to their approach, our base STGAT model incorporates the LSTM architecture in order to integrate historic data, however, the CNN architecture needs to operate on larger scale communities and cannot directly leverage the graph structure natural to bike-sharing stations and necessary for precise demand prediction. Notably our approach does not encode weather features. 
+
+=== Using graph structural information about flows to enhance short-term demand prediction in bike-sharing systems @YANG2020101521
+
+In this paper, the authors investigate the influence of graph features on improving short-term bike-sharing demand prediction. 
+It focuses on incorporating graph-based features derived from flow interactions such as Out-strength, In-strength, Out-degree, In-degree, and PageRank to improve prediction accuracy. It compares three machine learning models: XGBoost, Multi-Layer Perceptron (MLP), and LSTM. This study found that including graph-based features significantly improves model performance compared to using traditional features like meteorological data alone. The authors compare XGBoost, MLP and LSTM models and found the LSTM model to be the most effective for incorporating complex graph based features, while the overall performance of XGBoost is nearly comparable. 
+
+- The XGBoost architecture was found to provide good performance with little parameter tuning, while being less effective at handling complex time dependencies.
+- The LSTM architecture has significantly higher training complexity compared to XGBoost.
+
+Most notably, the graph-based features where found to improve the performance significantly. While our approach does not directly encode more complex graph features, the graph attention layer operating on the spatial closeness graph allows the STGATmodel to learn complex graph-based features, as shown in @Kong_STGAT_2020.
+
+=== Modeling bike-sharing demand using a regression model with spatially varying coefficients @WANG2021103059
+
+This article focuses on investigating how various factors such as land use, socio-demographic attributes, and transportation infrastructure influence bike-sharing usage at different stations. Notably, they define a graph model, where the data for each bike-sharing cluster is accumulated according to its catchment region. The catchment region is calculated using Thiessen polygons, and ensured to be non-overlapping. The authors propose a spatially varying coefficients (SVC) regression model that accounts for local spatial effects, unlike previous regression models that assume the factors are spatially homogeneous. 
+
+Most notably, their graph model is based on connectivity between station clusters. This sophisticated modeling approach allows to generalize to areas instead of precise station locations, which allows generalizing to catchment areas and thus new station locations, allowing planning stations in areas where the predicted usage is high. 
+
+While our approach does not allow generalization to new locations, this extension could be a valuable extension in order to leverage the model for planning problems. However, their approach does not regress on previous historic data, which limits its applicability to real time, adaptive prediction, but makes it rather suitable for general analysis purposes. 
+
+=== Modeling Bike Availability in a Bike-Sharing System Using Machine Learning @Ashqar2017
+
+This paper explores predicting bike availability at San Francisco Bay Area Bike Share stations using machine learning algorithms. The authors apply three methods: Random Forest (RF) and Least Squares Boosting (LSBoost) for univariate regression and Partial Least-Squares Regression (PLSR) for multivariate regression. They found that factors like station neighbors, time of prediction, and weather conditions are significant in predicting bike availability.
+They found the random forest to significantly outperform the other model in MAE. Advantages of the all of the approaches, especially the RF model are its robustness to overfitting and simplicity in tuning, compared to deep learning approaches. However, the RF model requires independent observations, with performance decreasing significantly as the prediction horizon increases.
+
+=== Cross-Mode Knowledge Adaptation for Bike Sharing Demand Prediction Using Domain Adversarial Graph Neural Networks @Liang2024
+
+This recent paper focuses on improving the state of the art in bike sharing demand prediction by integrating additional features from other transport modes, here subway and ride-hailing traffic data, all from New York City. In order to integrate this heterogeneous graph structured data, recurrent CNNs are combined with graph convolutions to yield transport embeddings. The paper also introduces an adversarial training principle to learn these embeddings, such that the embeddings learned are optimized to be indistinguishable. These embeddings are then fed into multiple GNNs, combined into a single representation, and passed to a final prediction layer.
+
+Notably the architecture allows extension to integrate very heterogeneous other modes of transportation significant to bike-sharing that would otherwise be very difficult to integrate. However, it is highly complex and depends on other transportation data, which makes it unsuitable for our problem. 
+Similarly to our STGAT models, it uses GNN layers to process graph based data, which allows to learn complex graph-based features. Adapting the STGAT architecture to use their deeper GNN architecture might improve the prediction accuracy significantly.
 
 = Problem Formulation and Modeling <sec:modeling>
 // describe the include mathematical formulation of the problem and possible modeling approaches.
