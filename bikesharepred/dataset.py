@@ -1,4 +1,4 @@
-import torch
+import torch as th
 import numpy as np
 import math
 import pandas as pd
@@ -16,13 +16,13 @@ def un_z_score(x_normed, mean, std):
     return x_normed * std  + mean
 
 def MAPE(v, v_):
-    return torch.mean(torch.abs((v_ - v)) /(v + 1e-15) * 100)
+    return th.mean(th.abs((v_ - v)) /(v + 1e-15) * 100)
 
 def RMSE(v, v_):
-    return torch.sqrt(torch.mean((v_ - v) ** 2))
+    return th.sqrt(th.mean((v_ - v) ** 2))
 
 def MAE(v, v_):
-    return torch.mean(torch.abs(v_ - v))
+    return th.mean(th.abs(v_ - v))
 
 def edge_list_from_matrix(adj):
     """
@@ -36,7 +36,6 @@ def edge_list_from_matrix(adj):
 
 
 import pyproj
-import warnings
 
 __geod = pyproj.Geod(ellps='WGS84')
 def dst(lat1, lon1, lat2, lon2):
@@ -55,7 +54,7 @@ class BikeGraphDataset(InMemoryDataset):
         self.cfg = config
         root = self.cfg.processed_dir # store the graph dataset - processed data also in the processed directory, along with the bike data
         super().__init__(root, transform = None, pre_transform = None)
-        self._data, self.slices, self.N_stations, self.μ, self.σ, self.new2oldidx = torch.load(self.processed_paths[0])
+        self._data, self.slices, self.N_stations, self.μ, self.σ, self.new2oldidx = th.load(self.processed_paths[0])
         self.cfg['N_stations'] = self.N_stations
 
     def adjacency_matrix(self, stations, min_stations_connected, max_dst_meters):
@@ -142,11 +141,11 @@ class BikeGraphDataset(InMemoryDataset):
             weekday_angle = 2 * np.pi * weekday_idx[i:i + N_history] / 7
             time_features = np.stack([np.cos(daytime_angle), np.sin(daytime_angle), np.cos(weekday_angle), np.sin(weekday_angle)], axis = 1)
 
-            graphdata = geomdata.Data(x = torch.tensor(x), y = torch.tensor(y), edge_index = torch.tensor(edge_list), edge_attr = torch.tensor(edge_attr), y_mask = torch.tensor(y_mask), time_features = torch.tensor(time_features, dtype = torch.float32))
+            graphdata = geomdata.Data(x = th.tensor(x), y = th.tensor(y), edge_index = th.tensor(edge_list), edge_attr = th.tensor(edge_attr), y_mask = th.tensor(y_mask), time_features = th.tensor(time_features, dtype = th.float32))
 
             seqs.append(graphdata)
         self._data, self.slices = geomdata.InMemoryDataset.collate(seqs)
-        torch.save((self._data, self.slices, self.N_stations, self.μ, self.σ, self.new2old_idx), self.processed_paths[0])
+        th.save((self._data, self.slices, self.N_stations, self.μ, self.σ, self.new2old_idx), self.processed_paths[0])
 
     def get_day_splits(self, train_frac = 21 / 30, val_frac = 3 / 30, shuffle = True):
         """

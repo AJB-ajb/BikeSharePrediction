@@ -10,7 +10,8 @@
   abstract: [
     Bike-sharing usage prediction has been implemented and analyzed using a variety of models, ranging from linear and logistic regression models with extensive spatial features [cit], decision features, ARIMA [cit] to deep learning models with convolutional [cit] and graph features [cit]. 
     However, modeling and prediction of the underlying demand function that drives the usage has not been rigorously attempted to the best of our knowledge, possibly due to the ill-posed nature of the problem. Our goal is to learn a demand function from data, that is suitable for short term demand prediction, such as adaptive pricing applications.
-    We propose defining properties of a demand function and extend the biologically inspired Spatio-Temporal Graph Neural Network (STGAT) architecture from traffic prediction to jointly predict both the actual usage rate and a suitable demand function matching the data, which we take from the City of Toronto's open data portal [cit]. We analyze predictive performance and measures of demand prediction comparing three variations of the architecture and show the qualitative behavior of the learned demand function. 
+    We propose defining properties of a demand function and extend the biologically inspired Spatio-Temporal Graph Neural Network (STGAT) architecture from traffic prediction to jointly predict both the actual usage rate and extrapolate a suitable demand function. We analyze predictive performance on a subset of historic ridership data in Toronto. We analyze measures of demand prediction comparing the adapted base STGAT architecture, an upscaled variant and a variation with a transformer backend. 
+    We find that the learned demand function successfully encodes the defined axiomatic aspects of the demand. Also, on the investigated data, all three models show very similar performance, significantly outperforming a linear baseline.
   ],
   authors: (
     (
@@ -35,7 +36,7 @@
 
 = Introduction <sec:intro>
 // summarize the importance of the problem you are trying to solve and the reason that motivated you to select this project.
-Docked bike-sharing, i.e. a system of stations where bicycles are docked and taken from are a common way of implementing a bicycle sharing system. As bicycle sharing becomes one of the most popular ways to commute, it plays a significant role in the public transportation system. 
+Dock-based bike-sharing, i.e. a system of stations where bicycles are docked and taken from are a common way of implementing a bicycle sharing system. As bicycle sharing becomes one of the most popular ways to commute, it plays a significant role in the public transportation system. 
 Considered for the city of Toronto, according to the Bike Share Toronto 2023 Business Review, the total number of rides in 2023 is estimated to be about $5.5$ million, projected to 2025 to become more than $6.2$ million @Hanna_2023. The total number of stations deployed is planned to be more than $1,000$ with more than $10, 000$ bikes available. However, the demand varies greatly between location, weekday, season and other factors, which leads to imbalances and congestions in the system. This results in customer dissatisfaction and unreliability of the system, jeopardizing the central role of bicycle in reaching emission-neutral transportation and providing convenience. 
 
 To properly implement dynamic solutions, such as adaptive dynamic pricing and terminal extensions, the demand needs to be reliably predicted. Since bike-sharing usage fluctuates nontrivially based on a multitude of different influences, such as weekday, daytime, events, weather and more features, machine learning and especially neural network approaches have been successfully employed to predict general usage @Ashqar2017 @Dastjerdi2022 @Liang2024. However, only predicting the number of bikes taken in or out is not sufficient for implementing a dynamic pricing system: For example, when a small station is predicted to be completely full at a time, how much should we incentivize taking out bikes? The demand in this case could range from zero (e.g. in the night) to almost arbitrarily high (e.g. during rush-hours in the day), but this quantity can not be directly computed from a purely predictive model.
@@ -48,7 +49,8 @@ The structure of this article is as follows:
 - We give an overview on other approaches on bike-sharing usage prediction and the STGAT architecture.
 - We then mathematize the notion of a demand function and formalize the bike-sharing joint prediction task.
 - In the following section, we translate the notion of a demand function into a proper regularizer and describe our variation of the STGAT architecture and the data processing.
-- We then compare the predictive performance of our model to a linear baseline. We investigate its quality over the prediction horizon and show qualitative prediction results. We qualitatively compare different modeling choices in the resulting demand model and evaluate quantitative aspects of the demand model.
+- We then compare the predictive performance of our model to a linear baseline. We investigate its quality over the prediction horizon and show prediction results. We qualitatively compare different modeling choices in the resulting demand model and evaluate quantitative aspects of the demand model.
+- We conclude by discussing model advantages and disadvantages and give directions for future research. 
 
 // Problem motivation
 == Motivation <sec:motivation>
@@ -125,9 +127,9 @@ The base network consists of the following layers:
 - A second LSTM layer with hidden size $128$.
 - A final linear layer operating on the last LSTM prediction, outputting information for all $9$ timepoints.
 
+As a variation of the LSTM-based standard STGAT architecture, we additionally investigate a version, where we replace the LSTMs with a transformer, consisting of four blocks. The transformer architecture can be seen as a successor of RNNs, fundamentally building on multihead attention and improving parallelizability of training.
 // precise description; also transformer variation
 // architecture: straight diagram [td]
-
 == Modeling Details
 We use the historic bike-sharing data provided from the city of Toronto's open data portal. For all computations, we use the data for the full month May 2024. For the station geographical locations, we use the current live information provided. As of November $2024$, there are $861$ stations in the data. Notably, because historic station capacities are not given and station capacities frequently change due to extension and relocation, we have to estimate when a station is full or empty from the bikes taken in and out. For an exploratory spatial data analysis of Toronto's bike-sharing system, where we also cover other details of the data processing, see our #link("https://medium.com/ai4sm/exploring-spatial-patterns-in-torontos-bike-sharing-system-7b5c486ae250", "Medium article").
 
@@ -141,10 +143,13 @@ In order to estimate when a station is empty or full, we thus take daily minima 
 In modeling bike sharing demand, the prediction time horizon and the averaging horizon fundamental parameters. In @Dastjerdi2022, the number of pickups in $15$ minutes was found to be reliably predictable, which is equivalent to predicting a uniform average over $15$ minutes. 
 In our approach, we follow @Kong_STGAT_2020 and predict $9$ timepoints in $5$ minute intervals over the next $45$ minutes, given $12$ timepoints in the past, for all stations at the same time. Due to our averaging approach, which averages over partial timepoints in the future, we choose the standard evaluation horizon to be $20$ minutes, which has in @Ashqar2017 also been found to be the most effective horizon for prediction using standard ML models.
 Because we are interested in finding a suitable demand function over time, which is related to rate data, a way of averaging the bike pickups has to be chosen. Notably, if one chooses to predict the exact number of bikes taken out or in each minute, one finds almost random behavior, because whether one arrives a minute later or not depends on many other factors, which are insignificant to the demand. Thus, we choose to average with a gaussian filter with $σ = 10 "min"$ to calculate rate information. For this standard deviation of $10$ minutes, thus roughly $63%$ of the information accumulated lies in the interval $±10 "min"$ around each datapoint and $≈95%$ in the $±20 "min"$ interval. Empirically, this interval yields nontrivial prediction results. (Notably, smoothing with $σ = 60 "min"$ renders the prediction task trivial, yielding similar accuracies for both linear and more complex models.)
-
  // critical choice: smoothing window. We use gaussian, σ 10mins, i.e. ≈63% of the information are from ± 10 minutes, 95% are within 20 minutes (predicting the number of bikes taken out in the next 20 minutes has been identified as the most effective interval)
+
+=== Graph Featurization
+For the input graph, we choose to apply an analogous featurization as in the main architecture @Kong_STGAT_2020. We choose to connect two stations, if their distance is lower than a threshold $d_min$, here, we chose a walking distance of $500m$. Additionally, because several stations are farther outside, we choose to connect each station to at least the other $N_min$ closest stations. Empirically, we found $N_min = 10$ to improve the prediction performance slightly.
+
 = Performance Evaluation <sec:evaluation>
-#let min = "min"
+#let mins = "min" // minutes
 
 For the evaluation of our demand prediction task, we choose to compare three reference models:
 - The base STGAT model, with number of nodes and final output size adapted to the problem, without dropout.
@@ -158,7 +163,8 @@ Also, as in @Kong_STGAT_2020, we normalize the data by calculating the Z-score f
 In the following, if not noted otherwise, the root mean squared error (RMSE) and mean absolute error (MAE) will always be in $["Bikes"/"Hour"]$, while the mean squared error (MSE) is in $["Bikes"/"Hour"]^2$ and the loss is dimensionless. 
 //: Establish a set of evaluation metrics and run some experiments with different values of algorithm parameters to quantitatively and qualitatively assess the performance of the developed solution. Students must identify the pros and cons of each technique and assess the quality of work as well as its fit with project objectives.
 
-In order to compare the predictive quality we compare the RMSE, MSE and MAE on the test set, as in @Kong_STGAT_2020. Notably the predictive performance of all STGAT models is very similar, with the transformer giving a slightly higher RMSE of $1.57$. All models outperform the linear baseline model in all metrics significantly. Also, the specific performance seems to not benefit from upscaling the model, although a larger model would probably be beneficial for a larger data set of multiple years.
+== Predictive Comparison
+In order to compare the predictive quality, we compare the RMSE, MSE and MAE on the test set in @table:prediction_metrics, as in @Kong_STGAT_2020. 
 // Quantitative Comparison
 
 #figure(
@@ -170,16 +176,43 @@ table(columns: 6,
   [STGAT-transformer], [$8.90$ MiB],[$1.57$], [$3.11$], [$0.868$], [$0.8$]
 ),
 caption: [Quantitative comparison of the predictive metrics of models evaluated on the test set, along with model size.]
-)
+) <table:prediction_metrics> 
 
-For the qualitative illustration of the  extrapolation, we show true rates, and predicted rates and demands for a section of the train data for one station.
-We can see that the model's demand predictions generally follow similar shapes as its prediction, but are higher on various points.
-Here, we see that the model predicts a demand 
+Notably, the predictive performance of all STGAT models is very similar, with the transformer giving a slightly higher RMSE of $1.57$. All models outperform the linear baseline model in all metrics significantly. Also, the specific performance seems to not benefit from upscaling the model, although a larger model would probably be beneficial for a larger data set of multiple years.
+
+#figure(
+image("imgs/rmses_over_horizon_over_models.png"),
+caption: [RMSE for different prediction horizons]
+) <plot:rmse_over_horizon>
+
+In order to see, how the prediction horizon influences our specific models, we compare the RMSEs for each horizon separately, shown in @plot:rmse_over_horizon.
+As before, the absolute error is similar, both over models as well as over the horizon. Both smaller models, the base STGAT and transformer variant share the same nearly linear rise over the prediction horizon. Notably, the upscaled variant seems to learn small horizon prediction better than long-prediction horizon. We hypothesize that this is due to the model overfitting partially to the specific shape of the curve.
+
+== Demand Evaluation
+For the qualitative illustration of the demand extrapolation, we show true rates, and predicted rates and demands for a section of the train data for one station in @plot:dem_vs_pred_vs_true for the STGAT base model.
 
 #figure(
 image("imgs/dem_vs_pred_vs_true_station6_train.png"),
-caption: [Example comparison of demand and rate predictions along with ground truth on the test set for a horizon prediction of $20"min"$.]
-)
+caption: [Example comparison of demand and rate predictions along with ground truth for a horizon prediction of $20"min"$.]
+) <plot:dem_vs_pred_vs_true>
+
+We can see that the model's demand predictions generally follow similar shapes as its prediction, but are higher on various points.
+Qualitatively, we can see several aspects of the model results:
+- The model assigns an in-demand of $≈2$ bikes per hour until ca. $5$ in the morning, although the actual rate and prediction is at $0$, which is the behavior, we want. Likely, there is demand at night, but the station is full, so it is not matched by actual rate, but can be extrapolated from other nights.
+- The demand is generally higher than both the true and predicted rates, which is desired and a fundamental property of the demand. 
+- The predictions, despite on the training data, do not match the high spikes fully and miss later spikes in the evening. We hypothesize that these are difficult to predict, because they depend on bikes taken out spontaneously, as it seems that the station is full in the evening. 
+
+In order to qualitatively compare the characteristics of the demand predictions, we compare a sample over a day of test data in @plot:dem_over_models.
+
+#figure(
+image("imgs/dem_pred_comp_station4_train.png"),
+caption: [Comparison of the demand predictions of different models.]
+) <plot:dem_over_models>
+
+We see that, the smaller models, the STGAT and its transformer variation, are close to each other. We hypothesize that the smaller models stick closer to their rate prediction, because the limited model parameters encourage higher sharing of the parameters contributing to demand and rate prediction.
+Notably the upscaled version seems to give more extreme - both higher and lower - predictions. The upscaled version also seems to produce visually smoother curves, although its numerical smooth violation is slightly higher, which is likely due to its generally higher range estimations.
+
+In order to estimate quantitative measures of the demand prediction, we calculate the individual components of the demand loss function from @sec:modeling, shown in @table:demand_metrics. In order to have interpretable metrics, we take the roots of the squared loss components, which are indicated by the 'R' prefix, i.e. the root demand mean square violation is in units $["Bikes" / "Hour"]$. Also we calculate the mean absolute difference of the demand and the rate prediction, to see how far the model extrapolations lie.
 
 #figure(
 table(columns: 4,
@@ -190,32 +223,43 @@ table(columns: 4,
   [STGAT-transformer], [$1.29$], [$0.00543$], [$1.08$]
   ),
   
-  caption: [Comparison of demand metrics.]
-)
+  caption: [Comparison of demand metrics on the test set.]
+) <table:demand_metrics>
 
+We see analogous results to the previous findings: The STGAT slightly improves the demand rate violation by $0.02$ bikes per hour versus upscaled and transformer variants. The linear model shows a significantly higher demand violation, about $10 ×$ higher smoothness violation and aggressively extrapolates demand.
+Notably, the upscaled version also shows about $10%$ higher demand extrapolation, which is consistent with @plot:dem_vs_pred_vs_true.
 
-// Qualitative Comparison:
-// Demand function plotted for trained model, compared to prediction
-// Demand function plotted as comparison for different regularizers, smoothness of demand function
+// overall, testset rmse seems to be dominated by outliers and high spikes
 
-// Root Demand violation in evaluation in N_bikes / hour 
-// Smoothness violation in evaluation set in Bikes / hour^4
+// note on graph featurization
+We have additionally tested several variations of the STGAT, including increasing the number of model heads and number of GAT layers. 
+Usually, the graph featurization is one of the most important design choices in a graph neural network, however, the precise density seems to have only a small impact in this case. We suspect that this is due to the main part of the parameters being in the later layers, which ignore the graph structure. 
 
-// Model and linear model performance over different all time horizons
-// Table: predictive model performance
-// Quantitative metrics
-// difference of demand prediction versus true rate
+== Discussion of the Models
+We conclude and list the main advantages and disadvantages of the investigated models.
 
-// Investigation of demand
-// Predictions of problematic areas
+- The linear model has a simple structure, but its model size is about $100×$ higher than the base STGAT model. It shows poor model capability and bad performance in all metrics on the test set, rendering it impractical for the precise prediction task at hand. However, with more elaborate feature engineering, as in @WANG2021103059, simple regression models can generally perform well and are more easily interpretable.
+
+- The base STGAT adaptation shows the yields performance in all quantitative metrics, being outperformed only slightly in $5mins$ horizon prediction by the upscaled variant. With a model size of $≈16"MiB"$, it appears to be robust to overfitting for this particular dataset. However, for larger and more diverse datasets over multiple months, a larger model is likely needed.
+
+- The upscaled STGAT variant shows slightly worse, but comparable performance to the base variant. Notably, its size makes it prone to overfitting and it needs tuned dropout and weight decay regularization. However, we found that it has the capacity to fully fit the training data and thus probably is a good choice for a larger dataset. Notably, we found upscaling the LSTM sizes, rather than the multihead graph attention layers, to be necessary to achieve higher model capability. Also, this model shows visually smoother and potentially less noisy demand curves, which however requires further investigation.
+
+- The transformer variant is slightly outperformed by the STGAT, but has a model size of only half of the parameters. Notably, we found that we could achieve a lower train loss with this model, which suggests that the small deep LSTMs in the base STGAT forget some of the previous information. However, it requires about $20%$ more iterations to converge.
+
 = Conclusions and Recommendations <sec:conclusion>
 //: summarize the conclusion and future improvement. Explain how did you solve the problem; what problems were met? what did the results show? And how to refine the proposed solution? You may organize ideas using lists or numbered points, if appropriate, but avoid making your article into a check-list or a series of encrypted notes.
 
-// Future Work and Improvement:
-// Develop a dynamic pricing model based on the demand prediction and a simulation using the station data
-// Train and compare on full data (multiple years)
-// Adapt deeper graph-neural network approaches with edge features to improve generalization to extended bike networks
-// add weather, seasonal and holiday features
+In our article, we have defined the bike-sharing demand prediction problem and proposed axioms for a natural demand function.We have translated the demand axioms into a continuous regularized loss function for training neural network models. We then adapted the STGAT architecture from @Kong_STGAT_2020, to jointly predict rates and demand and evaluated qualitative aspects of the resulting demand prediction and the quantitive quality of the predictions.
+We have seen:
+- Several variants of the STGAT model yield sufficiently accurate results for rate prediction.
+- The demand functions learned using our regularized loss are smooth and extrapolate the data in a natural way.
+
+For future investigation, we find that several aspects are worth further work:
+- Developing a short term adaptive pricing model, that incentivizes and shows routes to users from nearby stations with high in demand to stations with high out demand, given their target and start point seems to be the most natural application of our model.
+- Training the model on multiple months of data and increasing the prediction quality seems to be a central problem, as the accuracy of the demand naturally correlates with prediction capability of the model.
+- Integrating other features such as weather, wind, or other relevant features from @EREN2020101882 into the demand prediction model is also likely to be a promising improvement.
+- Investigating successful graph-based models from other domains in their role for demand prediction is also likely to improve accuracy and the generalized demand metric.
+- Finally, exploring spatial differences of the demand prediction to the true rates is promising for investigating the most problematic times and stations in the city in order improve the relocation of bikes and stations.
 
 = Code <sec:code>
 // : provide a GitHub permanent link to the code that implements the proposed solution.

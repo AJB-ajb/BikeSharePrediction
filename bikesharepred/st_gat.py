@@ -1,11 +1,11 @@
 import torch as th
 import torch.nn as nn
-import torch.nn.functional as F
 import torch_geometric.nn as geomnn
 
 
 import itertools
 
+# base implementation adapted from https://github.com/jswang/stgat_traffic_prediction/blob/main/models/st_gat.py
 class STGAT(nn.Module):
     """
         Spatio-Temporal Graph Attention Network
@@ -86,7 +86,6 @@ class STGAT(nn.Module):
             # time features in input is # [batch_size * seq_length, 4] (seq_length = N_history)
             time_features = batch.time_features.reshape(batch_size, seq_length, 4).movedim(0, 1)
             
-            # .expand(batch_size, N_nodes, seq_length, 4) 
             x = th.cat((x, time_features), dim = -1) # -> [ seq_length × batch_size × (N_features + 4)]
             
 

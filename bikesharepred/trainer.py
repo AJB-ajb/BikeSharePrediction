@@ -107,21 +107,17 @@ def eval(model, dataset, dataloader, cfg):
     device = next(model.parameters()).device
     model.eval()
     
-    mse, rmse, mae = 0., 0., 0.
-    mse_per_future_step = th.zeros(cfg.N_predictions, dtype=th.float32, device=device)
-
-    metrics = [] # other metrics from the loss function
+    metrics = [] # list of metrics for each batch
 
     for i, batch in enumerate(dataloader):
         batch = batch.to(device)
         y_shape = batch.y.shape
-        batch_size = y_shape[0] // cfg.N_stations
-        y_truth_rel = batch.y.reshape(batch.y.shape[0], cfg.N_predictions, 2) #.view(y_pred_rel.shape) (unnecessary (?))
+        y_truth_rel = batch.y.reshape(batch.y.shape[0], cfg.N_predictions, 2)
         y_pred_rel = model.forward(batch).reshape(batch.y.shape[0], cfg.N_predictions, 4)
         y_rate_pred_rel = y_pred_rel[:, :, :2]
         y_demand_pred_rel = y_pred_rel[:, :, 2:]
         if i == 0:
-        # both [num_batches_total × (batch_size * num_nodes) × (num predictions * features per ob ∈ {2, 4})] ; (?)
+        # both [num_batches_total × (batch_size * num_nodes) × (num predictions * features per ob ∈ {2, 4})]
             y_rate_preds = th.empty((len(dataloader), y_shape[0], cfg.N_predictions, 2),dtype=y_pred_rel.dtype, device=device)
             y_demand_preds = th.empty_like(y_rate_preds)
             y_truths = th.empty_like(y_rate_preds)
@@ -230,7 +226,7 @@ def model_train(train_dataset, val_dataset, test_dataset, cfg):
             if iteration % cfg['eval_interval'] == 0 or iteration == cfg['max_iterations']:
 
                 model.eval()
-                evals_list, evals_dict, y_rate_preds, y_demand_preds, y_truths = eval(model, val_dataset, val_dataloader, cfg)
+                _, evals_dict, y_rate_preds, y_demand_preds, y_truths = eval(model, val_dataset, val_dataloader, cfg)
                 scalars = {key: val.item() for key, val in evals_dict.items() if val.dim() == 0}
                 metrics_str = ', '.join([f"{key}: {val:.5e}" for key, val in scalars.items()])
                 
